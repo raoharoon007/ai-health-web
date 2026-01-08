@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+
+/* Fonts DM Sans */
+
+@font-face {
+  font-family: "DM Sans";
+  src: url("./assets/fonts/DMSans-VariableFont_opsz,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DM Sans";
+  src: url("./assets/fonts/DMSans-Italic-VariableFont_opsz,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+
+
+@theme {
+
+  /* colortheme */
+  --color-bodybg: #F9FAFB;
+  --color-white: #FFFFFF;
+  --color-softsection: #EEF4F7;
+  --color-primary: #2F80ED;
+  --color-hoverbtn: #2563EB;
+  --color-secondarybtn: #E8F0FE;
+  --color-primarytext: #1F2937;
+  --color-secondarytext: #4B5563;
+  --color-mutedtext: #9CA3AF;
+  --color-bordercolor: #E5E7EB;
+  --color-successinfo: #2FA4A9;
+  --color-successinfobg: #E6F6F7;
+  --color-warning: #D14343;
+  --color-warningbg: #FDECEC;
+  --color-borderwarning:#B63E41;
+
+
+
+  /* breakspoints */
+  --breakpoint-xs: 380px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1440px;
+  --breakpoint-3xl: 1600px;
+  --breakpoint-4xl: 1760px;
+
+
+  --animate-appear-up: appear-up 1.5s ease-out forwards;
+
+}
+
+/* Animations */
+@keyframes appear-up {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes revealText {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.animate-left-to-right {
+  animation: revealText 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-wave {
+  animation: wave 0.8s infinite ease-in-out;
+  transform-origin: bottom;
+  display: inline-block;
+}
+
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* React Select  */
+
+.tw-select__control {
+  @apply w-full! rounded-xl! border! border-bordercolor!
+         px-1.75! py-1.5! text-sm! font-normal!
+         text-primarytext! cursor-pointer!
+         focus:outline-none! ;
+}
+
+.tw-select__control--is-focused {
+  @apply border-bordercolor!
+}
+
+.tw-select__placeholder {
+  @apply text-mutedtext!;
+}
+
+.tw-select__single-value {
+  @apply text-primarytext!;
+}
+
+.tw-select__menu {
+  @apply rounded-xl! border! border-bordercolor! mt-1! overflow-hidden;
+}
+
+.tw-select__option {
+  @apply px-4! py-3! text-sm! cursor-pointer! bg-white! text-primarytext!;
+}
+
+
+.tw-select__option:not(.tw-select__option--is-selected):hover {
+  @apply bg-secondarybtn! text-primarytext!;
+}
+
+
+.tw-select__option--is-focused:not(.tw-select__option--is-selected) {
+  @apply bg-secondarybtn! text-primarytext! cursor-pointer!;
+}
+.tw-select__option--is-selected {
+  @apply bg-primary! text-white! cursor-pointer! ;
+}
+
+.tw-select__option--is-selected.tw-select__option--is-focused {
+  @apply bg-primary! text-white!;
+}
