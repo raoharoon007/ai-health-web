@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 const LandingPage = () => {
   return (
-    <div className="bg-bodybg bg-[url('./landing-page-img.png')] bg-no-repeat bg-center bg-cover min-h-screen md:overflow-hidden">
+    <div className='bg-bodybg bg-[url("/landing-page-img.png")] bg-no-repeat bg-center bg-cover min-h-screen md:overflow-hidden'>
       <div className="flex flex-col min-h-screen  ">
         <div className="flex-1 flex items-center justify-center">
           <div className="max-w-224.25 mx-auto px-5 flex flex-col items-center sm:pt-4 pt-3 md:pt-0 animate-appear-up">

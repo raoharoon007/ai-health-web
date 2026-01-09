@@ -1,5 +1,5 @@
 import Logoutlogo from '../../assets/icons/Logout-icon.svg?react';
-import Profilelogo from '../../assets/icons/Profile-icon.svg?react';
+import Profilelogo from '../../assets/images/Profile-icon.png';
 import Helathlogo from '../../assets/icons/Health-AI.svg?react';
 import { Link } from "react-router-dom";
 
@@ -17,7 +17,7 @@ const ChatHeader = () => {
                 </Link>
 
                 <Link to="/setting">
-                    <Profilelogo />
+                    <img src={Profilelogo} className='size-11 object-contain'/>
                 </Link>
             </div>
             
