@@ -97,7 +97,8 @@ const NewChat = () => {
 
     const handleSendMessage = (text, attachedFiles = []) => {
         if (!text.trim() && attachedFiles.length === 0) return;
-
+        setIsRecording(false);
+        setIsTranscribing(false);  
         const newId = Date.now().toString();
         const userMsg = { role: "user", text, files: attachedFiles };
 

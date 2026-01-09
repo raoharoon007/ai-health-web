@@ -90,6 +90,8 @@ const ChatConversation = () => {
 
     const handleSendMessage = (text, attachedFiles = []) => {
         if (!text.trim() && attachedFiles.length === 0) return;
+        setIsRecording(false);
+        setIsTranscribing(false);
         lastProcessedChatId.current = chatId;
         const userMsg = { role: "user", text, files: attachedFiles };
 
