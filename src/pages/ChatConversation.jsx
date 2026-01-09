@@ -6,8 +6,6 @@ import Botvideo from '../assets/videos/Botvideo.mp4';
 import ChatInput from "../components/Chat/ChatInput";
 import { useLocation, useParams, useOutletContext } from "react-router-dom";
 
-
-
 const ChatConversation = () => {
     const { chatId } = useParams();
     const { chats, setChats } = useOutletContext();
@@ -32,21 +30,6 @@ const ChatConversation = () => {
         }
     }, [currentChat, chatId, state]);
 
-    useEffect(() => {
-        if (state?.triggerBot && currentMessages.length === 1) {
-
-
-            if (lastProcessedChatId.current !== chatId) {
-                lastProcessedChatId.current = chatId;
-                const timer = setTimeout(() => {
-                    handleBotReply();
-                }, 500);
-
-                return () => clearTimeout(timer);
-            }
-        }
-    }, [chatId, currentMessages.length, state?.triggerBot]);
-
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -54,6 +37,8 @@ const ChatConversation = () => {
     useEffect(() => {
         scrollToBottom();
     }, [currentMessages, displayedText]);
+
+    // Typewriter Logic
 
     const startTyping = (fullText) => {
         let index = 0;
