@@ -58,7 +58,7 @@ const LandingPage = () => {
             </div>
           </div>
         </div>
-        <div className="pb-1.5 2xl:pb-2 px-5 max-w-130 xl:max-w-139.75 2xl:max-w-170 mx-auto">
+        <div className="pb-1.5 xl:pb-2 2xl:pb-3 px-5 max-w-130 xl:max-w-139.75 2xl:max-w-170 mx-auto">
           <p className="text-sm 2xl:text-lg font-semibold text-secondarytext text-center">
             Medical Disclaimer:
             <span className="font-normal text-mutedtext pl-px">
