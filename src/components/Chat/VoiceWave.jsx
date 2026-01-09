@@ -1,10 +1,22 @@
 import { useEffect, useState, useRef } from "react";
 
 const VoiceWave = ({ active, color = "#1D1D1B" }) => {
-    const [heights, setHeights] = useState(Array(160).fill(4));
+    const [barCount, setBarCount] = useState(window.innerWidth < 640 ? 60 : 160);
+    const [heights, setHeights] = useState(Array(barCount).fill(4));
+    
     const animationRef = useRef();
     const audioContextRef = useRef();
     const streamRef = useRef();
+
+    useEffect(() => {
+        const handleResize = () => {
+            const newCount = window.innerWidth < 640 ? 60 : 160;
+            setBarCount(newCount);
+            setHeights(Array(newCount).fill(4));
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const stopAudio = () => {
         if (animationRef.current) {
@@ -13,22 +25,16 @@ const VoiceWave = ({ active, color = "#1D1D1B" }) => {
         }
         if (streamRef.current) {
             const tracks = streamRef.current.getTracks();
-            tracks.forEach(track => {
-                track.stop(); 
-                track.enabled = false;
-            });
+            tracks.forEach(track => track.stop());
             streamRef.current = null; 
         }
-
         if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-            audioContextRef.current.close().catch(e => console.log("Ctx close error:", e));
+            audioContextRef.current.close();
             audioContextRef.current = null;
         }
-
-        setHeights(Array(160).fill(4));
+        setHeights(Array(barCount).fill(4));
     };
 
-    // 2. Start Audio Function
     const startAudio = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -38,21 +44,22 @@ const VoiceWave = ({ active, color = "#1D1D1B" }) => {
             const analyser = audioContextRef.current.createAnalyser();
             const source = audioContextRef.current.createMediaStreamSource(stream);
 
-            analyser.fftSize = 512;
+            analyser.fftSize = 256; // Mobile performance ke liye thoda kam rakha hai
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
 
             source.connect(analyser);
 
             const animate = () => {
-                if (!streamRef.current) return; // Stop animation if stream is gone
+                if (!streamRef.current) return;
                 analyser.getByteFrequencyData(dataArray);
-                const step = Math.floor(dataArray.length / 160) || 1;
+                
+                const step = Math.floor(dataArray.length / barCount) || 1;
                 const newHeights = [];
 
-                for (let i = 0; i < 160; i++) {
+                for (let i = 0; i < barCount; i++) {
                     let val = dataArray[i * step];
-                    let h = val > 5 ? (val / 255) * 40 + 4 : 4;
+                    let h = val > 5 ? (val / 255) * 35 + 4 : 4;
                     newHeights.push(h);
                 }
 
@@ -68,44 +75,35 @@ const VoiceWave = ({ active, color = "#1D1D1B" }) => {
 
     useEffect(() => {
         let isMounted = true; 
-
-        const initMic = async () => {
-            if (active && isMounted) {
-                await startAudio();
-            }
-        };
-
         if (active) {
-            initMic();
+            startAudio();
         } else {
             stopAudio();
         }
-
         return () => {
             isMounted = false;
             stopAudio(); 
         };
-    }, [active]);
-
+    }, [active, barCount]); // barCount change hone par restart logic
 
     return (
         <div 
-        className="flex items-center justify-between gap-px w-full h-12 overflow-hidden px-2"
-        style={{ display: active ? 'flex' : 'none' }} 
-    >
-        {heights.map((h, i) => (
-            <span
-                key={i}
-                className="rounded-full transition-all duration-75 ease-out"
-                style={{
-                    width: "2px",
-                    height: `${h}px`,
-                    backgroundColor: color,
-                    opacity: h > 5 ? 0.9 : 0.2,
-                }}
-            />
-        ))}
-    </div>
+            className="flex items-center justify-center gap-0.5 w-full h-12 overflow-hidden px-1"
+            style={{ display: active ? 'flex' : 'none' }} 
+        >
+            {heights.map((h, i) => (
+                <span
+                    key={i}
+                    className="rounded-full transition-all duration-75 ease-out shrink-0"
+                    style={{
+                        width: window.innerWidth < 640 ? "3px" : "2px", // Mobile par bars thode mote
+                        height: `${h}px`,
+                        backgroundColor: color,
+                        opacity: h > 5 ? 0.9 : 0.2,
+                    }}
+                />
+            ))}
+        </div>
     );
 };
 
