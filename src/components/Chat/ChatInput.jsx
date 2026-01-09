@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import FileAttachIcon from '../../assets/icons/File-attachment.svg?react';
 import MicIcon from '../../assets/icons/Mic-icon.svg?react';
 import SendIcon from '../../assets/icons/Send-icon.svg?react';
@@ -21,7 +21,7 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
     const isFileDisabled = isRecording;
 
     const startRecording = () => {
-        if (disabled) return; // Block recording if disabled
+        if (disabled) return;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) return alert("Speech recognition not supported");
 
@@ -61,7 +61,7 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
     };
 
     const handleFileChange = (e) => {
-        if (isFileDisabled) return; // Block file change if disabled
+        if (isFileDisabled) return;
         const selectedFiles = Array.from(e.target.files);
         if (files.length + selectedFiles.length > MAX_FILES) {
             setFileLimitError(true);
@@ -106,13 +106,12 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
         }
     };
 
-
     return (
-        <div className={`relative w-full max-w-5xl flex justify-center mx-auto py-4 sm:gap-4 gap-2 items-end bg-transparent transition-opacity ${disabled ? "opacity-70" : "opacity-100"}`}>
+        <div className={`relative w-full max-w-5xl flex justify-center mx-auto py-2 sm:py-4 gap-1.5 sm:gap-4 items-end bg-transparent transition-opacity ${disabled ? "opacity-70" : "opacity-100"}`}>
 
-            {/* File Attachment Icon */}
+            {/* File Attachment Icon - Adjusted size for mobile */}
             <FileAttachIcon
-                className={`transition-all ${isFileDisabled ? "cursor-not-allowed grayscale opacity-50" : "cursor-pointer"}`}
+                className={`transition-all w-8 h-8 sm:w-14 sm:h-14 ${isFileDisabled ? "cursor-not-allowed grayscale opacity-50" : "cursor-pointer"}`}
                 onClick={() => !isFileDisabled && fileInputRef.current?.click()}
             />
             <input
@@ -126,16 +125,17 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
             />
 
             {fileLimitError && (
-                <div className="absolute -top-12 left-0 bg-warning text-white text-xs px-3 py-2 rounded-lg shadow-lg">
+                <div className="absolute -top-12 left-0 bg-warning text-white text-[10px] sm:text-xs px-3 py-2 rounded-lg shadow-lg z-50">
                     You can upload up to 3 files only
                 </div>
             )}
 
-            <div className={`relative flex flex-col flex-1 bg-white border rounded-3xl overflow-hidden transition-all ${disabled ? "bg-gray-50 border-gray-200" : "border-bordercolor focus-within:border-primary"}`}>
+            {/* Main Input Container - Border radius and padding adjusted */}
+            <div className={`relative flex flex-col flex-1 bg-white border rounded-2xl sm:rounded-3xl overflow-hidden transition-all ${disabled ? "bg-gray-50 border-gray-200" : "border-bordercolor focus-within:border-primary"}`}>
 
-                {/* --- FILES MAPPING START --- */}
+                {/* --- FILES MAPPING --- */}
                 {files.length > 0 && !isRecording && (
-                    <div className="flex flex-wrap gap-3 p-3 pb-0">
+                    <div className="flex flex-wrap gap-2 p-2 sm:p-3 pb-0">
                         {files.map((f, i) => {
                             const fileType = f.file.type;
                             const extension = f.file.name.split('.').pop().toUpperCase();
@@ -143,28 +143,21 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
                             return (
                                 <div key={i} className="relative group">
                                     {fileType.startsWith("image/") ? (
-                                        <img src={f.preview} alt="preview" className="h-20 w-20 object-cover rounded-xl border border-bordercolor" />
+                                        <img src={f.preview} alt="preview" className="h-14 w-14 sm:h-20 sm:w-20 object-cover rounded-lg sm:rounded-xl border border-bordercolor" />
                                     ) : (
-                                        /* PDF, DOC, Video Icon UI */
-                                        <div className="h-20 w-20 flex flex-col items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${extension === 'PDF' ? 'bg-red-100 text-warning' :
-                                                extension === 'DOC' || extension === 'DOCX' ? 'bg-blue-100 text-primary' :
-                                                    'bg-gray-200 text-gray-700'
-                                                }`}>
+                                        <div className="h-14 w-14 sm:h-20 sm:w-20 flex flex-col items-center justify-center bg-gray-50 rounded-lg sm:rounded-xl border border-dashed border-gray-300">
+                                            <span className={`text-[8px] sm:text-[10px] font-bold px-1 sm:px-2 py-0.5 rounded ${extension === 'PDF' ? 'bg-red-100 text-warning' : 'bg-blue-100 text-primary'}`}>
                                                 {extension}
                                             </span>
-                                            <p className="text-[8px] text-center mt-2 px-1 truncate w-full text-gray-500">
-                                                {f.file.name}
-                                            </p>
                                         </div>
                                     )}
 
                                     {!disabled && (
                                         <button
                                             onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
-                                            className="absolute -top-1.5 -right-1.5 bg-warning text-white rounded-full w-5 h-5 cursor-pointer flex items-center justify-center shadow-sm"
+                                            className="absolute -top-1 -right-1 bg-warning text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 cursor-pointer flex items-center justify-center shadow-sm"
                                         >
-                                            <CrossFileIcon style={{ width: '10px' }} />
+                                            <CrossFileIcon style={{ width: '8px' }} />
                                         </button>
                                     )}
                                 </div>
@@ -172,9 +165,8 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
                         })}
                     </div>
                 )}
-                {/* --- FILES MAPPING END --- */}
 
-                <div className="relative flex items-center w-full min-h-14 px-5">
+                <div className="relative flex items-center w-full min-h-10 sm:min-h-14 px-3 sm:px-5">
                     <div className="w-full" style={{ display: isRecording ? 'block' : 'none' }}>
                         <VoiceWave active={isRecording} color="#1D1D1B" />
                     </div>
@@ -183,8 +175,8 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
                         <div className="relative w-full flex items-center">
                             {isTranscribing && (
                                 <div className="absolute inset-0 flex items-center gap-2 bg-white z-10">
-                                    <Linespinner className="animate-spin" />
-                                    <span className="text-secondarytext text-base font-light italic">Transcribing....</span>
+                                    <Linespinner className="animate-spin w-4 h-4" />
+                                    <span className="text-secondarytext text-sm sm:text-base font-light italic">Transcribing....</span>
                                 </div>
                             )}
                             <textarea
@@ -197,29 +189,29 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
                                 }}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Describe your Symptoms"
-                                className="w-full bg-transparent py-3 font-medium placeholder:font-normal text-primarytext focus:outline-none resize-none max-h-50 overflow-y-auto custom-scrollbar"
-                                style={{ minHeight: '44px' }}
+                                className="w-full bg-transparent py-2 sm:py-3 text-sm sm:text-base font-medium placeholder:font-normal text-primarytext focus:outline-none resize-none max-h-40 sm:max-h-50 overflow-y-auto custom-scrollbar"
+                                style={{ minHeight: '36px' }}
                             />
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Action Buttons (Mic/Send) */}
-            <div className="min-w-12 flex items-center gap-2">
+            {/* Action Buttons (Mic/Send) - Adjusted sizes for mobile */}
+            <div className="flex items-center gap-1 sm:gap-2 pr-1">
                 {isRecording || disabled ? (
                     <RecordingIcon
-                        className="cursor-pointer"
+                        className="cursor-pointer w-8 h-8 sm:w-14 sm:h-14"
                         onClick={isRecording ? stopRecording : onStop}
                     />
                 ) : (
                     <>
                         {(message.trim().length > 0 || files.length > 0) && (
-                            <SendIcon className="cursor-pointer transition-all" onClick={handleAction} />
+                            <SendIcon className="cursor-pointer transition-all w-8 h-8 sm:w-14 sm:h-14" onClick={handleAction} />
                         )}
 
                         <MicIcon
-                            className={`transition-all ${isTranscribing ? "cursor-not-allowed grayscale opacity-30" : "cursor-pointer"}`}
+                            className={`transition-all w-8 h-8 sm:w-14 sm:h-14 ${isTranscribing ? "cursor-not-allowed grayscale opacity-30" : "cursor-pointer"}`}
                             onClick={() => !isTranscribing && startRecording()}
                         />
                     </>
