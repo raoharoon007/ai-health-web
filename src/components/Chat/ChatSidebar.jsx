@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import Newchatlogo from '../../assets/icons/New-chat.svg?react';
 import Searchlogo from '../../assets/icons/Search-icon.svg?react';
+import SideMenuicon from '../../assets/icons/Tabler_menu.svg?react';
 import ChatList from "./ChatList";
 import SearchChatModal from "./SearchChatModal";
-import { HiMenu } from "react-icons/hi";
-import { HiX } from "react-icons/hi";
+
 
 
 const ChatSidebar = ({ chats, setChats }) => {
@@ -17,7 +17,7 @@ const ChatSidebar = ({ chats, setChats }) => {
     <>
       {/* Hamburger icon fixed on mobile */}
       <div className="fixed top-6.5 left-2 z-50 md:hidden">
-        <HiMenu
+        <SideMenuicon
           className="text-2xl cursor-pointer text-primarytext"
           onClick={() => setIsSidebarOpen(true)}
         />
@@ -33,7 +33,7 @@ const ChatSidebar = ({ chats, setChats }) => {
       `}>
         {/* Close button on mobile */}
         <div className="flex items-center justify-between md:hidden p-4 border-b border-bordercolor">
-          <HiX
+          <SideMenuicon
             className="text-2xl cursor-pointer text-primarytext"
             onClick={() => setIsSidebarOpen(false)}
           />
