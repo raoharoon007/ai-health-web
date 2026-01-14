@@ -195,7 +195,7 @@ const SettingForm = () => {
 
                         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 border border-bordercolor rounded-xl bg-white p-6'>
                             {conditions.map((item, index) => (
-                                <div key={index} className='flex border-primary border items-center rounded-xl px-4.5 py-3.5 justify-between'>
+                                <div key={index} className='flex bg-[rgba(47,128,237,0.10)] border-primary border items-center rounded-xl px-4.5 py-3.5 justify-between'>
                                     <span className='text-primary text-xs font-medium truncate'>{item}</span>
                                     <CrossOutlineIcon className="cursor-pointer w-4 h-4 ml-1" onClick={() => removeCondition(index)} />
                                 </div>
