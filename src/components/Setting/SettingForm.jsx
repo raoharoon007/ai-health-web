@@ -93,7 +93,7 @@ const SettingForm = () => {
                                 </button>
                             </div>
                             <div className="p-6">
-                                <SetNewPasswordform />
+                                <SetNewPasswordform buttonText="Save New Password" />
                             </div>
                         </div>
                     </div>
