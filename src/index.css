@@ -158,5 +158,5 @@ body,
   @apply bg-primary! text-white!;
 }
 .tw-select-error .tw-select__control {
-  @apply border-red-500! ;
+  @apply border-warning!;
 }
