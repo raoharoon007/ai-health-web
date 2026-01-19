@@ -16,6 +16,7 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
     const recognitionRef = useRef(null);
     const fileInputRef = useRef(null);
     const textareaRef = useRef(null);
+    const [isMultiline, setIsMultiline] = useState(false);
     const MAX_FILES = 3;
 
     const isFileDisabled = isRecording;
@@ -56,7 +57,9 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
         const textarea = textareaRef.current;
         if (textarea) {
             textarea.style.height = "auto";
-            textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+            const newHeight = Math.min(textarea.scrollHeight, 200);
+            textarea.style.height = `${newHeight}px`;
+            setIsMultiline(newHeight > 45);
         }
     };
 
@@ -131,7 +134,11 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
             )}
 
             {/* Main Input Container - Border radius and padding adjusted */}
-            <div className={`relative flex flex-col flex-1 bg-white border-2 rounded-full overflow-hidden transition-all ${disabled ? "bg-gray-50 border-gray-200" : "border-bordercolor focus-within:border-primary"}`}>
+           <div className={`relative flex flex-col flex-1 bg-white border-2 overflow-hidden transition-all duration-300 
+                 ${disabled ? "bg-gray-50 border-gray-200" : "border-bordercolor focus-within:border-primary"}
+                  /* Dynamic Radius Logic */
+                   ${(isMultiline || files.length > 0) ? "rounded-2xl" : "rounded-full"} 
+                  `}>
 
                 {/* --- FILES MAPPING --- */}
                 {files.length > 0 && !isRecording && (
