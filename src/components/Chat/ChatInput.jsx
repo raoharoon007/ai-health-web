@@ -131,7 +131,7 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
             )}
 
             {/* Main Input Container - Border radius and padding adjusted */}
-            <div className={`relative flex flex-col flex-1 bg-white border rounded-2xl sm:rounded-3xl overflow-hidden transition-all ${disabled ? "bg-gray-50 border-gray-200" : "border-bordercolor focus-within:border-primary"}`}>
+            <div className={`relative flex flex-col flex-1 bg-white border-2 rounded-full overflow-hidden transition-all ${disabled ? "bg-gray-50 border-gray-200" : "border-bordercolor focus-within:border-primary"}`}>
 
                 {/* --- FILES MAPPING --- */}
                 {files.length > 0 && !isRecording && (

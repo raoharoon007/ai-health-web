@@ -10,7 +10,7 @@ const Setting = () => {
                 <div>
                     <Link to="/chat" className='flex gap-3'>
                         <Leftarrow />
-                        <h1 className='text-base text-primarytext font-normal '>Back to Assitant</h1>
+                        <h1 className='text-base text-primarytext font-normal '>Back to Assistant</h1>
                     </Link>
                 </div>
                 <div className='pt-8.25'>

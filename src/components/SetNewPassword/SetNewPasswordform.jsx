@@ -20,7 +20,7 @@ const schema = yup.object({
         .oneOf([yup.ref("password"), null], "Passwords must match"),
 }).required();
 
-const SetNewPasswordform = () => {
+const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [showOverlay1, setShowOverlay1] = useState(false);
@@ -114,7 +114,7 @@ const SetNewPasswordform = () => {
                     type="submit"
                     className="w-full text-center bg-primary hover:bg-hoverbtn text-white rounded-full py-3.5 font-semibold shadow-lg shadow-primary/10 cursor-pointer transition mt-2 active:scale-[0.98]"
                 >
-                    Reset Password
+                    {buttonText || "Submit"}
                 </button>
             </form>
 
