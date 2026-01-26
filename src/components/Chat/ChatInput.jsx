@@ -204,7 +204,7 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
             </div>
 
             {/* Action Buttons (Mic/Send) - Adjusted sizes for mobile */}
-            <div className="flex items-center gap-1 sm:gap-2 pr-1">
+            <div className="flex items-center gap-1 sm:gap-2 xl:gap-4 pr-1">
                 {isRecording || disabled ? (
                     <RecordingIcon
                         className="cursor-pointer w-8 h-8 sm:w-14 sm:h-14"
@@ -212,14 +212,15 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
                     />
                 ) : (
                     <>
-                        {(message.trim().length > 0 || files.length > 0) && (
-                            <SendIcon className="cursor-pointer transition-all w-8 h-8 sm:w-14 sm:h-14" onClick={handleAction} />
-                        )}
-
                         <MicIcon
                             className={`transition-all w-8 h-8 sm:w-14 sm:h-14 ${isTranscribing ? "cursor-not-allowed grayscale opacity-30" : "cursor-pointer"}`}
                             onClick={() => !isTranscribing && startRecording()}
                         />
+
+                                                {(message.trim().length > 0 || files.length > 0) && (
+                            <SendIcon className="cursor-pointer transition-all w-8 h-8 sm:w-14 sm:h-14" onClick={handleAction} />
+                        )}
+
                     </>
                 )}
             </div>
