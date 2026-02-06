@@ -1,211 +1,354 @@
 import { useState, useEffect, useRef } from "react";
-import Chatbotlogo from '../assets/images/Chatbot.webp';
-import ListeningAvatar from '../assets/images/ListeningAvatar.webp';
-import Reviewbot from '../assets/images/Reviewbot.webp';
-import Botvideo from '../assets/videos/Botvideo.mp4';
-import ChatInput from "../components/Chat/ChatInput";
 import { useLocation, useParams, useOutletContext } from "react-router-dom";
+import api from "../api/axiosInstance";
+
+import ChatStatus from "../components/Conversationchat/ChatStatus";
+import MessageList from "../components/Conversationchat/MessageList";
+import ChatFooter from "../components/Conversationchat/ChatFooter";
 
 const ChatConversation = () => {
     const { chatId } = useParams();
     const { chats, setChats } = useOutletContext();
+    const [apiError, setApiError] = useState("");
     const { state } = useLocation();
+    
+    // States
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
-    const [botStatus, setBotStatus] = useState("idle");
+    const [botStatus, setBotStatus] = useState(state?.aiResponse ? "reviewing" : "idle");
     const [displayedText, setDisplayedText] = useState("");
-    const lastProcessedChatId = useRef(null);
-    const messagesEndRef = useRef(null);
+    
+    // Refs
     const typingIntervalRef = useRef(null);
-    const currentChat = chats.find(c => c.id === chatId);
+    const audioRef = useRef(null);
+    const hasHandledInitial = useRef(false);
+    const isStoppedRef = useRef(false);
+    const activeTextRef = useRef(""); 
+    const activeChatIdRef = useRef(chatId);
+
+    const currentChat = chats.find(c => String(c.id) === String(chatId));
     const currentMessages = currentChat ? currentChat.messages : [];
 
-    useEffect(() => {
-        if (currentMessages.length === 1 && state?.triggerBot) {
-            if (lastProcessedChatId.current !== chatId) {
-                lastProcessedChatId.current = chatId;
-                handleBotReply();
-            }
+    // --- HELPER 1: SAFE STRING ---
+    const getSafeString = (val) => {
+        if (val === null || val === undefined) return "";
+        if (typeof val === 'string') return val;
+        if (typeof val === 'object') {
+            if (val.response) return getSafeString(val.response);
+            if (val.content) return getSafeString(val.content);
+            return ""; 
         }
-    }, [currentChat, chatId, state]);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        return String(val);
     };
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [currentMessages, displayedText]);
+    // --- HELPER 2: SMART RESPONSE ---
+    const getSmartResponse = (data) => {
+        if (!data) return "";
+        if (data["llm response"]) return getSafeString(data["llm response"]);
 
+        const pres = data.prescription || data;
+        if (pres.response) return getSafeString(pres.response);
+        
+        if (pres.medicine) {
+            const med = getSafeString(pres.medicine);
+            if (med) {
+                let parts = [med];
+                if (pres.precautions && Array.isArray(pres.precautions)) {
+                    parts.push("\nPrecautions: " + pres.precautions.join(", "));
+                }
+                if (pres.consult_doctor) {
+                    parts.push("\n" + getSafeString(pres.consult_doctor));
+                }
+                return parts.join("\n");
+            }
+        }
+        if (pres.consult_doctor) return getSafeString(pres.consult_doctor);
+        return "I cannot provide a specific diagnosis. Please consult a doctor.";
+    };
+
+    // --- 1. RESET ---
+    useEffect(() => {
+        activeChatIdRef.current = chatId;
+
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
+        if (typingIntervalRef.current) {
+            clearInterval(typingIntervalRef.current);
+            typingIntervalRef.current = null;
+        }
+
+        if (!state?.aiResponse) {
+            setBotStatus("idle");
+        }
+        setIsRecording(false);
+        setIsTranscribing(false);
+        setDisplayedText("");
+        setApiError("");
+        isStoppedRef.current = false;
+
+        fetchChatHistory();
+
+        return () => {
+            if (audioRef.current) audioRef.current.pause();
+            if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+        };
+    }, [chatId]);
+
+    // --- 2. FETCH HISTORY ---
+    const fetchChatHistory = async () => {
+        if (state?.aiResponse) return;
+        if (state?.triggerBot === false && hasHandledInitial.current) return;
+        if (!chatId || chatId === "new" || chatId.length < 15) return;
+
+        const currentRequestId = chatId;
+
+        try {
+            const response = await api.post(`/chat/get-chat-by-conversation_id/${chatId}`);
+
+            if (activeChatIdRef.current !== currentRequestId) return;
+
+            if (response.data && Array.isArray(response.data)) {
+                const history = response.data.map(msg => {
+                    const isUser = msg.chat_by_user === true;
+                    const rawText = isUser ? msg.content : getSmartResponse(msg);
+                    const messageText = getSafeString(rawText);
+
+                    // --- FIX: READ 'uri' from GET API RESPONSE ---
+                    const mappedFiles = [];
+                    if (msg.uri && typeof msg.uri === 'string' && msg.uri.length > 10) {
+                        mappedFiles.push({
+                            preview: msg.uri, // API sends 'uri', we map it to 'preview'
+                            file: { type: 'image/jpeg' } 
+                        });
+                    }
+
+                    return {
+                        role: isUser ? "user" : "assistant",
+                        text: messageText,
+                        files: mappedFiles, // Add files to message
+                        id: msg._id,
+                        isTyping: false
+                    };
+                });
+
+                setChats(prev => {
+                    const existing = prev.find(c => String(c.id) === String(chatId));
+                    if (existing) {
+                        return prev.map(c => 
+                            String(c.id) === String(chatId) ? { ...c, messages: history } : c
+                        );
+                    } else {
+                        return [...prev, { id: chatId, title: "Conversation", messages: history }];
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("History fetch failed:", error);
+        }
+    };
+
+    // --- 3. NEW CHAT REDIRECT ---
+    useEffect(() => {
+        if (state?.aiResponse && chatId && !hasHandledInitial.current) {
+            const existingChat = chats.find(c => String(c.id) === String(chatId));
+            if (existingChat) {
+                hasHandledInitial.current = true;
+                if (activeChatIdRef.current !== chatId) return;
+
+                setChats(prev => prev.map(chat => 
+                    String(chat.id) === String(chatId)
+                    ? { ...chat, messages: [...chat.messages, { role: "assistant", text: "", isTyping: true }] }
+                    : chat
+                ));
+                playAndSync(state.aiResponse);
+            }
+        }
+    }, [chatId, state, chats]);
+
+    // --- 4. STOP LOGIC ---
+    const handleStopChat = () => {
+        isStoppedRef.current = true;
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+        if (botStatus === "replying" || botStatus === "reviewing") completeTyping(activeTextRef.current);
+        setBotStatus("idle");
+    };
+
+    // --- 5. PLAY & SYNC ---
+    const playAndSync = async (text) => {
+        const currentRequestId = chatId;
+        const safeText = getSafeString(text);
+
+        try {
+            isStoppedRef.current = false;
+            activeTextRef.current = safeText;
+            setBotStatus("reviewing"); 
+            setDisplayedText(""); 
+
+            const response = await api.post("/chat/chat-tts", { text: safeText }, { responseType: 'blob' });
+            
+            if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
+
+            const audioUrl = URL.createObjectURL(response.data);
+            if (audioRef.current) audioRef.current.pause();
+
+            const audio = new Audio(audioUrl);
+            audioRef.current = audio;
+
+            audio.oncanplaythrough = () => {
+                if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
+                audio.play().catch(e => console.error("Autoplay blocked:", e));
+            };
+
+            audio.onplay = () => {
+                if (activeChatIdRef.current !== currentRequestId) { audio.pause(); return; }
+                if (isStoppedRef.current) { audio.pause(); setBotStatus("idle"); return; }
+                setBotStatus("replying"); 
+                startTyping(safeText);        
+            };
+
+            audio.onended = () => {
+                if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
+                setBotStatus("idle");     
+            };
+            audio.onerror = () => {
+                if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
+                startTyping(safeText); 
+                setBotStatus("idle");
+            };
+        } catch (error) {
+            console.error("TTS Error:", error);
+            if (activeChatIdRef.current === currentRequestId && !isStoppedRef.current) {
+                startTyping(safeText);
+                setBotStatus("idle");
+            }
+        }
+    };
+
+    // --- 6. TYPING ---
     const startTyping = (fullText) => {
         let index = 0;
         setDisplayedText("");
         if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+
         typingIntervalRef.current = setInterval(() => {
+            if (isStoppedRef.current) {
+                clearInterval(typingIntervalRef.current);
+                return;
+            }
             if (index < fullText.length) {
                 setDisplayedText((prev) => prev + fullText.charAt(index));
                 index++;
             } else {
                 completeTyping(fullText);
             }
-        }, 40);
+        }, 25); 
     };
 
     const completeTyping = (fullText) => {
-        clearInterval(typingIntervalRef.current);
+        if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
         setChats(prev => prev.map(chat =>
-            chat.id === chatId
-                ? {
-                    ...chat,
-                    messages: chat.messages.map((m, idx) =>
-                        (idx === chat.messages.length - 1 && m.isTyping)
-                            ? { role: "assistant", text: fullText }
-                            : m
-                    )
-                }
+            String(chat.id) === String(chatId)
+                ? { ...chat, messages: chat.messages.map((m, idx) => (idx === chat.messages.length - 1 && m.isTyping) ? { role: "assistant", text: fullText, isTyping: false } : m) }
                 : chat
         ));
         setDisplayedText("");
-        setBotStatus("idle");
     };
 
-    const handleSendMessage = (text, attachedFiles = []) => {
+    // --- 7. SEND MESSAGE ---
+    const handleSendMessage = async (text, attachedFiles = []) => {
+        const currentRequestId = chatId;
         if (!text.trim() && attachedFiles.length === 0) return;
+        
         setIsRecording(false);
         setIsTranscribing(false);
-        lastProcessedChatId.current = chatId;
+        isStoppedRef.current = false;
+        setApiError("");
+        if (audioRef.current) audioRef.current.pause();
+
         const userMsg = { role: "user", text, files: attachedFiles };
-        setChats(prev => prev.map(chat =>
-            chat.id === chatId ? { ...chat, messages: [...chat.messages, userMsg] } : chat
-        ));
-        handleBotReply();
-    };
+        const botPlaceholder = { role: "assistant", text: "", isTyping: true };
 
-    const handleBotReply = () => {
-        setBotStatus("reviewing");
-        setTimeout(() => {
-            setBotStatus("replying");
-            const botFullReply = "I have received your message and analyzed the details. How else can I assist you today?";
-            setChats(prev => prev.map(chat =>
-                chat.id === chatId
-                    ? { ...chat, messages: [...chat.messages, { role: "assistant", text: "", isTyping: true }] }
-                    : chat
-            ));
-            startTyping(botFullReply);
-        }, 2000);
-    };
+        setBotStatus("reviewing"); 
+        
+        setChats(prev => {
+            const existing = prev.find(c => String(c.id) === String(chatId));
+            if (existing) {
+                const updatedChat = { 
+                    ...existing, 
+                    messages: [...existing.messages, userMsg, botPlaceholder] 
+                };
+                const otherChats = prev.filter(c => String(c.id) !== String(chatId));
+                return [updatedChat, ...otherChats];
+            }
+            return prev;
+        });
 
-    const handleStopChat = () => {
-        if (typingIntervalRef.current) {
-            completeTyping(displayedText);
-        }
-    };
+        try {
+            let imageUrl = null;
+            if (attachedFiles.length > 0) {
+                const uploadFormData = new FormData();
+                uploadFormData.append("file", attachedFiles[0].file);
+                const uploadResponse = await api.post("/chat/upload-medical-image", uploadFormData, {
+                    headers: { "Content-Type": "multipart/form-data" }
+                });
+                imageUrl = uploadResponse.data.url;
+            }
 
-    const handleRecordingChange = (s) => {
-        setIsRecording(s);
-        if (!s) {
-            setIsTranscribing(true);
-            setTimeout(() => setIsTranscribing(false), 1500);
+            if (isStoppedRef.current) { setBotStatus("idle"); return; }
+            if (activeChatIdRef.current !== currentRequestId) return;
+
+            const payload = { conversation_id: chatId, content: text };
+            
+            // FIX: Sending 'image_uri' for POST (Sending message)
+            if (imageUrl) payload.image_uri = imageUrl; 
+
+            const response = await api.post("/chat/existing-chat", payload);
+            
+            if (activeChatIdRef.current !== currentRequestId) return;
+            if (isStoppedRef.current) { setBotStatus("idle"); return; }
+
+            const aiReply = getSmartResponse(response.data);
+            playAndSync(aiReply);
+
+        } catch (error) {
+            console.error("Error:", error);
+            if (activeChatIdRef.current === currentRequestId) {
+                setApiError("Failed to get response.");
+                setBotStatus("idle");
+                setChats(prev => prev.map(chat => String(chat.id) === String(chatId) ? { ...chat, messages: chat.messages.slice(0, -1) } : chat));
+            }
         }
     };
 
     return (
-        <div className="relative flex flex-col w-full h-full bg-white overflow-hidden sm:px-4 px-2">
+        <div key={chatId} className="relative flex flex-col w-full h-full bg-white overflow-hidden sm:px-4 px-2">
+            
+            <ChatStatus 
+                isRecording={isRecording} 
+                isTranscribing={isTranscribing} 
+                botStatus={botStatus} 
+            />
 
-            {/* 1. TOP FIXED SECTION */}
-            <div className="flex-none pt-4 sm:pt-8 pb-2 sm:pb-4 bg-white z-10 ">
-                <div className="h-24 w-24 sm:h-35 sm:w-35 mx-auto transition-all duration-300 flex justify-center items-center rounded-full bg-blue-500/10">
-                    {botStatus === "replying" ? (
-                        <video src={Botvideo} autoPlay loop muted className="h-full w-full object-contain rounded-full" />
-                    ) : (
-                        <img
-                            src={isRecording ? ListeningAvatar : botStatus === "reviewing" ? Reviewbot : Chatbotlogo}
-                            alt="Bot"
-                            className="h-full w-full object-contain rounded-full"
-                        />
-                    )}
-                </div>
-                <div className="h-6 flex items-center justify-center mt-2">
-                    <span className="text-black font-semibold text-sm sm:text-base">
-                        {isRecording && <span className="animate-pulse">Listening....</span>}
-                        {isTranscribing && !isRecording && "Transcribing...."}
-                        {botStatus === "reviewing" && "Reviewing your input..."}
-                    </span>
-                </div>
-            </div>
+            <MessageList 
+                messages={currentMessages} 
+                displayedText={displayedText} 
+            />
 
-            {/* 2. MIDDLE SCROLLABLE SECTION */}
-            <div className="flex-1 overflow-y-auto px-2 sm:px-5 custom-scrollbar bg-white">
-                <div className="max-w-5xl mx-auto w-full space-y-4 sm:space-y-6 py-4 sm:py-8">
-                    {currentMessages.map((msg, index) => (
-                        <div key={index} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                            <div className={`
-                                max-w-[90%] sm:max-w-[75%] px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed
-                                wrap-break-word whitespace-pre-wrap overflow-hidden
-                                ${msg.role === "user" ? "bg-primary text-white rounded-tr-none" : "bg-white text-primarytext border border-bordercolor rounded-tl-none"}
-                            `}>
-                                {/* --- UPDATED FILES DISPLAY --- */}
-                                {msg.files && msg.files.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 mb-3">
-                                        {msg.files.map((f, i) => {
-                                            // Agar preview nahi hai (state se aya hai), to naya URL banayein
-                                            const fileUrl = f.preview || (f.file ? URL.createObjectURL(f.file) : null);
-                                            const isImage = f.file?.type?.startsWith("image/");
-                                            const isVideo = f.file?.type?.startsWith("video/");
-
-                                            return (
-                                                <div key={i} className="relative rounded-lg overflow-hidden border border-bordercolor shadow-sm bg-gray-50">
-                                                    {isImage ? (
-                                                        <img src={fileUrl} alt="upload" className="h-24 w-24 sm:h-32 sm:w-32 object-cover" />
-                                                    ) : isVideo ? (
-                                                        <video src={fileUrl} className="h-24 w-24 sm:h-32 sm:w-32 object-cover" controls={false} />
-                                                    ) : (
-                                                        <div className="h-20 w-20 sm:h-24 sm:w-24 flex flex-col items-center justify-center p-2 text-center">
-                                                            <span className="text-[10px] font-bold text-primary uppercase">
-                                                                {f.file?.name?.split('.').pop() || 'FILE'}
-                                                            </span>
-                                                            <p className="text-[8px] truncate w-full mt-1 text-gray-500">
-                                                                {f.file?.name}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                                {/* --- END FILES DISPLAY --- */}
-
-                                <div>
-                                    {msg.isTyping ? displayedText : msg.text}
-                                    {msg.isTyping && displayedText === "" && <span className="animate-pulse">...</span>}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                </div>
-            </div>
-
-            {/* 3. BOTTOM FIXED SECTION */}
-            <div className="flex-none bg-white px-1 sm:px-5">
-                <div className="max-w-5xl mx-auto py-2">
-                    <div className="w-full">
-                        <ChatInput
-                            onRecordingChange={handleRecordingChange}
-                            onSend={handleSendMessage}
-                            onStop={handleStopChat}
-                            disabled={botStatus !== "idle"}
-                            isTranscribing={isTranscribing}
-                        />
-                    </div>
-                    <div className="flex justify-center py-2">
-                        <span className="text-center text-mutedtext font-light text-[10px] sm:text-sm">
-                            AI can make mistakes. Consider checking important information.
-                        </span>
-                    </div>
-                </div>
-            </div>
+            <ChatFooter 
+                onRecordingChange={setIsRecording}
+                onTranscribingStatus={setIsTranscribing}
+                onSend={handleSendMessage}
+                onStop={handleStopChat}
+                botStatus={botStatus}
+                isTranscribing={isTranscribing}
+                apiError={apiError}
+            />
         </div>
     );
 };

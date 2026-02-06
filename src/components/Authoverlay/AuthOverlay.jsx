@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-const AuthOverlay = ({ isOpen, onClose }) => {
+const AuthOverlay = ({ isOpen }) => {
   if (!isOpen) return null;
 
   return (
@@ -27,13 +27,6 @@ const AuthOverlay = ({ isOpen, onClose }) => {
             Login
           </Link>
         </div>
-        
-        <button 
-          onClick={onClose}
-          className="mt-4 text-sm text-mutedtext  cursor-pointer"
-        >
-          Maybe Later
-        </button>
       </div>
     </div>
   );

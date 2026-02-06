@@ -157,6 +157,7 @@ body,
 .tw-select__option--is-selected.tw-select__option--is-focused {
   @apply bg-primary! text-white!;
 }
+
 .tw-select-error .tw-select__control {
-  @apply border-warning!;
+  @apply border-warning! ;
 }

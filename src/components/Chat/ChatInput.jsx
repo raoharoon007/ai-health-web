@@ -6,14 +6,26 @@ import RecordingIcon from '../../assets/icons/Recording-icon.svg?react';
 import CrossFileIcon from '../../assets/icons/Cross-file.svg?react';
 import Linespinner from '../../assets/icons/Line-Spinner.svg?react';
 import VoiceWave from "./VoiceWave";
+import api from "../../api/axiosInstance";
 
-const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop = () => { }, disabled = false, isTranscribing = false }) => {
+
+const ChatInput = ({ 
+    onRecordingChange = () => { }, 
+    onSend = () => { }, 
+    onStop = () => { }, 
+    onTranscribingStatus = () => { }, 
+    disabled = false, 
+    isTranscribing = false 
+}) => {
 
     const [message, setMessage] = useState("");
     const [isRecording, setIsRecording] = useState(false);
     const [files, setFiles] = useState([]);
     const [fileLimitError, setFileLimitError] = useState(false);
-    const recognitionRef = useRef(null);
+    const [isProcessing, setIsProcessing] = useState(false); 
+    const [audioStream, setAudioStream] = useState(null);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
     const fileInputRef = useRef(null);
     const textareaRef = useRef(null);
     const [isMultiline, setIsMultiline] = useState(false);
@@ -21,36 +33,92 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
 
     const isFileDisabled = isRecording;
 
-    const startRecording = () => {
+    const startRecording = async () => {
         if (disabled) return;
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return alert("Speech recognition not supported");
 
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.onresult = (event) => {
-            let transcript = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                transcript += event.results[i][0].transcript;
-            }
-            setMessage(transcript);
-        };
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            setAudioStream(stream);
 
-        recognition.start();
-        recognitionRef.current = recognition;
-        setIsRecording(true);
-        onRecordingChange(true);
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = async () => {
+                setIsProcessing(true);
+                onTranscribingStatus(true); 
+                
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                const audioFile = new File([audioBlob], "voice_message.wav", { type: "audio/wav" });
+                
+                await handleTranscribe(audioFile);
+                
+                stream.getTracks().forEach(track => track.stop());
+                setAudioStream(null);
+            };
+
+            mediaRecorder.start();
+            setIsRecording(true);
+            onRecordingChange(true);
+
+        } catch (error) {
+            console.error("Microphone access denied:", error);
+            alert("Could not access microphone. Please allow permissions.");
+        }
     };
 
     const stopRecording = () => {
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-            recognitionRef.current.abort();
-            recognitionRef.current = null;
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop(); 
+            setIsRecording(false);
+            onRecordingChange(false);
         }
-        setIsRecording(false);
-        onRecordingChange(false);
+    };
+
+    const handleTranscribe = async (audioFile) => {
+        const formData = new FormData();
+        formData.append("audio", audioFile);
+
+        try {
+            const response = await api.post("/chat/speech-to-text", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+
+            let transcribedText = "";
+
+            if (response.data.response) {
+                const rawResponse = response.data.response;
+                if (typeof rawResponse === 'string' && rawResponse.includes("transcribedText:")) {
+                    const match = rawResponse.match(/transcribedText:\s*(.*?)(?:,\s*Language|$)/);
+                    if (match && match[1]) {
+                        transcribedText = match[1];
+                    } else {
+                        transcribedText = rawResponse;
+                    }
+                } else {
+                    transcribedText = rawResponse;
+                }
+            } else {
+                transcribedText = response.data.text || response.data.transcript || "";
+            }
+
+            if (transcribedText) {
+                setMessage((prev) => (prev ? prev + " " + transcribedText : transcribedText));
+                setTimeout(() => adjustHeight(), 100);
+            }
+
+        } catch (error) {
+            console.error("Transcription failed:", error);
+        } finally {
+            setIsProcessing(false);
+            onTranscribingStatus(false); 
+        }
     };
 
     const adjustHeight = () => {
@@ -84,14 +152,6 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
 
         if (isRecording) {
             stopRecording();
-            setTimeout(() => {
-                if (message.trim().length > 0 || files.length > 0) {
-                    onSend(message, files);
-                    setMessage("");
-                    setFiles([]);
-                    if (textareaRef.current) textareaRef.current.style.height = "auto";
-                }
-            }, 100);
         } else {
             if (message.trim().length > 0 || files.length > 0) {
                 onSend(message, files);
@@ -109,10 +169,12 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
         }
     };
 
+    // Show spinner if Parent says so OR Local processing is on
+    const showSpinner = isTranscribing || isProcessing;
+
     return (
         <div className={`relative w-full max-w-5xl flex justify-center mx-auto py-2 sm:py-4 gap-1.5 sm:gap-4 items-end bg-transparent transition-opacity ${disabled ? "opacity-70" : "opacity-100"}`}>
 
-            {/* File Attachment Icon - Adjusted size for mobile */}
             <FileAttachIcon
                 className={`transition-all w-8 h-8 sm:w-14 sm:h-14 ${isFileDisabled ? "cursor-not-allowed grayscale opacity-50" : "cursor-pointer"}`}
                 onClick={() => !isFileDisabled && fileInputRef.current?.click()}
@@ -133,13 +195,11 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
                 </div>
             )}
 
-            {/* Main Input Container - Border radius and padding adjusted */}
-           <div className={`relative flex flex-col flex-1 bg-white border-2 overflow-hidden transition-all duration-300 
+            <div className={`relative flex flex-col flex-1 bg-white border-2 overflow-hidden transition-all duration-300 
                  ${disabled ? "bg-gray-50 border-gray-200" : "border-bordercolor focus-within:border-primary"}
                    ${(isMultiline || files.length > 0) ? "rounded-2xl" : "rounded-full"} 
                   `}>
 
-                {/* --- FILES MAPPING --- */}
                 {files.length > 0 && !isRecording && (
                     <div className="flex flex-wrap gap-2 p-2 sm:p-3 pb-0">
                         {files.map((f, i) => {
@@ -174,15 +234,18 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
 
                 <div className="relative flex items-center w-full min-h-10 sm:min-h-14 px-3 sm:px-5">
                     <div className="w-full" style={{ display: isRecording ? 'block' : 'none' }}>
-                        <VoiceWave active={isRecording} color="#1D1D1B" />
+                        <VoiceWave active={isRecording} audioStream={audioStream} color="#1D1D1B" />
                     </div>
 
                     {!isRecording && (
                         <div className="relative w-full flex items-center">
-                            {isTranscribing && (
+                            {/* Spinner Logic */}
+                            {showSpinner && (
                                 <div className="absolute inset-0 flex items-center gap-2 bg-white z-10">
                                     <Linespinner className="animate-spin w-4 h-4" />
-                                    <span className="text-secondarytext text-sm sm:text-base font-light italic">Transcribing....</span>
+                                    <span className="text-secondarytext text-sm sm:text-base font-light italic">
+                                        Transcribing....
+                                    </span>
                                 </div>
                             )}
                             <textarea
@@ -203,7 +266,6 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
                 </div>
             </div>
 
-            {/* Action Buttons (Mic/Send) - Adjusted sizes for mobile */}
             <div className="flex items-center gap-1 sm:gap-2 xl:gap-4 pr-1">
                 {isRecording || disabled ? (
                     <RecordingIcon
@@ -213,14 +275,12 @@ const ChatInput = ({ onRecordingChange = () => { }, onSend = () => { }, onStop =
                 ) : (
                     <>
                         <MicIcon
-                            className={`transition-all w-8 h-8 sm:w-14 sm:h-14 ${isTranscribing ? "cursor-not-allowed grayscale opacity-30" : "cursor-pointer"}`}
-                            onClick={() => !isTranscribing && startRecording()}
+                            className={`transition-all w-8 h-8 sm:w-14 sm:h-14 ${showSpinner ? "cursor-not-allowed grayscale opacity-30" : "cursor-pointer"}`}
+                            onClick={() => !showSpinner && startRecording()}
                         />
-
-                                                {(message.trim().length > 0 || files.length > 0) && (
+                        {(message.trim().length > 0 || files.length > 0) && (
                             <SendIcon className="cursor-pointer transition-all w-8 h-8 sm:w-14 sm:h-14" onClick={handleAction} />
                         )}
-
                     </>
                 )}
             </div>
