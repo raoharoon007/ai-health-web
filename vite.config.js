@@ -7,12 +7,11 @@ import svgr from 'vite-plugin-svgr'
 export default defineConfig({
   plugins: [ 
     react(),
-    tailwindcss(),
-    svgr({
-      // IMPORTANT: Only apply SVGR to imports with ?react suffix
-      // Regular .svg imports (without ?react) will be treated as URL strings
-      include: '**/*.svg?react',
-      exclude: '**/*.svg',
-    }),
-  ],
+     tailwindcss(),
+   svgr({include: '**/*.svg?react',}),],
 })
+
+
+
+
+

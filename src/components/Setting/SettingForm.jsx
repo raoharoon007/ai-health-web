@@ -1,15 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-// SVG imports ko simple strings ki tarah use karein
-import SettingProfileIcon from '../../assets/icons/Setting-Profile.svg';
-import ChevronDown from "../../assets/icons/arrow-down.svg";
-import PlusIcon from "../../assets/icons/Plus-Icon.svg";
-import CrossOutlineIcon from "../../assets/icons/Cross-outline.svg";
-import CrossIcon from '../../assets/icons/Cross-icon.svg';
-import CheckCircle from "../../assets/icons/checkmark-circle-01.svg";
-import EditIcon from "../../assets/icons/Editimage.svg";
-
+import SettingProfileIcon from '../../assets/icons/Setting-Profile.svg?react';
 import Select from "react-select";
+import ChevronDown from "../../assets/icons/arrow-down.svg?react";
+import PlusIcon from "../../assets/icons/Plus-Icon.svg?react";
+import CrossOutlineIcon from "../../assets/icons/Cross-outline.svg?react";
 import SetNewPasswordform from '../SetNewPassword/SetNewPasswordform';
+import CrossIcon from '../../assets/icons/Cross-icon.svg?react';
+import CheckCircle from "../../assets/icons/checkmark-circle-01.svg?react";
+import EditIcon from "../../assets/icons/Editimage.svg?react";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -85,12 +83,7 @@ const SettingForm = () => {
                 }
             }
 
-            const list = Array.isArray(diseasesRes.data?.data)
-                ? diseasesRes.data.data
-                : Array.isArray(diseasesRes.data)
-                    ? diseasesRes.data
-                    : [];
-
+            const list = Array.isArray(diseasesRes.data) ? diseasesRes.data : diseasesRes.data.data || [];
             setAllDiseases(list);
 
         } catch (error) {
@@ -193,6 +186,7 @@ const SettingForm = () => {
         const file = e.target.files[0];
         if (file) {
             if (!file.type.startsWith("image/")) return alert("Please upload an image file.");
+
             setLocalProfileImage(URL.createObjectURL(file));
             setSelectedFile(file);
         }
@@ -216,7 +210,7 @@ const SettingForm = () => {
                             <div className='flex justify-between items-center p-6 border-b border-bordercolor'>
                                 <span className='text-primarytext font-medium text-2xl'>Change Password</span>
                                 <button onClick={() => setIsChangingPassword(false)} className="cursor-pointer hover:opacity-70 transition">
-                                    <img src={CrossIcon} alt="close" />
+                                    <CrossIcon />
                                 </button>
                             </div>
                             <div className="p-6">
@@ -234,12 +228,10 @@ const SettingForm = () => {
                             <div className="relative h-16 w-16">
                                 {(localProfileImage || profileImage) ? (
                                     <img src={localProfileImage || profileImage} alt="Profile" className="h-full w-full bg-cover bg-no-repeat object-cover rounded-xl" />
-                                ) : (
-                                    <img src={SettingProfileIcon} alt="Default Profile" className="h-full w-full" />
-                                )}
+                                ) : <SettingProfileIcon className="h-full w-full" />}
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
                                 <button onClick={() => fileInputRef.current.click()} className="absolute bottom-13 -right-1.5 cursor-pointer">
-                                    <img src={EditIcon} alt="edit" />
+                                    <EditIcon />
                                 </button>
                             </div>
                             <div className='flex flex-col ml-4'>
@@ -266,17 +258,17 @@ const SettingForm = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Age</label>
-                                    <input {...register("age")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.age ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
+                                    <input {...register("age")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.age ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
                                     {errors.age && <span className="text-warning text-xs ml-1">{errors.age.message}</span>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Weight (kg)</label>
-                                    <input {...register("weight")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.weight ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
+                                    <input {...register("weight")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.weight ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
                                     {errors.weight && <span className="text-warning text-xs ml-1">{errors.weight.message}</span>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Height (cm)</label>
-                                    <input {...register("height")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.height ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
+                                    <input {...register("height")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.height ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
                                     {errors.height && <span className="text-warning text-xs ml-1">{errors.height.message}</span>}
                                 </div>
                                 <div>
@@ -286,11 +278,11 @@ const SettingForm = () => {
                                         control={control}
                                         render={({ field }) => (
                                             <Select {...field} options={genderOptions}
-                                                className={`w-full ${errors.gender ? "tw-select-error" : ""}`}
-                                                classNamePrefix="tw-select" components={{
-                                                    DropdownIndicator: () => <img src={ChevronDown} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" alt="chevron" />,
-                                                    IndicatorSeparator: () => null,
-                                                }} />
+                                            className={`w-full ${errors.gender ? "tw-select-error" : ""}`}
+                                             classNamePrefix="tw-select" components={{
+                                                DropdownIndicator: () => <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-primarytext pointer-events-none" />,
+                                                IndicatorSeparator: () => null,
+                                            }} />
                                         )}
                                     />
                                     {errors.gender && <span className="text-warning text-xs ml-1 font-medium">{errors.gender.message}</span>}
@@ -315,16 +307,10 @@ const SettingForm = () => {
                             </div>
                         </form>
                     </div>
-                    {/* Right Column */}
                     <div className='flex flex-col gap-6'>
                         <div className='flex justify-between items-center'>
                             <span className='text-lg font-medium text-primarytext'>Health Conditions</span>
-                            <img 
-                                src={PlusIcon} 
-                                className="cursor-pointer" 
-                                alt="add" 
-                                onClick={() => setShowInput(!showInput)} 
-                            />
+                            <PlusIcon className="cursor-pointer" onClick={() => setShowInput(!showInput)} />
                         </div>
 
                         {showInput && (
@@ -346,12 +332,7 @@ const SettingForm = () => {
                                 conditions.map((item, index) => (
                                     <div key={item._id || index} className='flex bg-[rgba(47,128,237,0.10)] border-primary border items-center rounded-xl px-4.5 py-3.5 justify-between'>
                                         <span className='text-primary text-xs font-medium truncate'>{item.disease}</span>
-                                        <img 
-                                            src={CrossOutlineIcon} 
-                                            className="cursor-pointer w-4 h-4 ml-1" 
-                                            alt="remove"
-                                            onClick={() => removeCondition(item._id)} 
-                                        />
+                                        <CrossOutlineIcon className="cursor-pointer w-4 h-4 ml-1" onClick={() => removeCondition(item._id)} />
                                     </div>
                                 ))
                             ) : (
@@ -371,7 +352,7 @@ const SettingForm = () => {
             {showOverlay1 && (
                 <div className="fixed inset-0 z-2000 flex  items-center justify-center bg-black/5 backdrop-blur-sm">
                     <div className="bg-white rounded-xl px-10 py-8 flex flex-col items-center gap-4 shadow-xl">
-                        <img src={CheckCircle} alt="success" />
+                        <CheckCircle />
                         <p className="text-[22px] font-medium text-primarytext">Changes Saved</p>
                     </div>
                 </div>
