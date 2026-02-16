@@ -1,7 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/((?!assets|favicon.ico|robots.txt).*)",
+      "source": "/ai-health/:path*",
+      "destination": "http://98.81.203.81/ai-health/:path*"
+    },
+    {
+      "source": "/((?!ai-health|assets|favicon.ico|robots.txt).*)",
       "destination": "/index.html"
     }
   ]
