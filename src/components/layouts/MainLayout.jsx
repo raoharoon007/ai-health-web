@@ -16,6 +16,12 @@ const MainLayout = () => {
   const hasFetchedInfo = useRef(false);
 
   const fetchConversations = async (pageNum) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+        setLoading(false);
+        return; 
+    }
+
     try {
       if (pageNum > 1) setIsFetchingMore(true);
 
