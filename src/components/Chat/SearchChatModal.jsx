@@ -23,9 +23,9 @@ const SearchChatModal = ({ chats, onClose }) => {
           />
         </div>
 
-        
+
         <div className="px-6 pb-6 max-h-64 overflow-y-auto space-y-3">
-          <ChatList chats={chats} setChats={() => {}} query={query} onChatClick={onClose} />
+          <ChatList chats={chats} setChats={() => { }} query={query} onChatClick={onClose} showOptionsMenu={false} />
         </div>
 
       </div>

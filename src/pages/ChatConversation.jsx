@@ -11,44 +11,45 @@ const ChatConversation = () => {
     const { chats, setChats } = useOutletContext();
     const [apiError, setApiError] = useState("");
     const { state } = useLocation();
-    
-    // States
+
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
     const [botStatus, setBotStatus] = useState(state?.aiResponse ? "reviewing" : "idle");
     const [displayedText, setDisplayedText] = useState("");
-    
-    // Refs
+
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const LIMIT = 20;
+
     const typingIntervalRef = useRef(null);
     const audioRef = useRef(null);
     const hasHandledInitial = useRef(false);
     const isStoppedRef = useRef(false);
-    const activeTextRef = useRef(""); 
+    const activeTextRef = useRef("");
     const activeChatIdRef = useRef(chatId);
 
     const currentChat = chats.find(c => String(c.id) === String(chatId));
     const currentMessages = currentChat ? currentChat.messages : [];
 
-    // --- HELPER 1: SAFE STRING ---
     const getSafeString = (val) => {
         if (val === null || val === undefined) return "";
         if (typeof val === 'string') return val;
         if (typeof val === 'object') {
             if (val.response) return getSafeString(val.response);
             if (val.content) return getSafeString(val.content);
-            return ""; 
+            return "";
         }
         return String(val);
     };
 
-    // --- HELPER 2: SMART RESPONSE ---
     const getSmartResponse = (data) => {
         if (!data) return "";
         if (data["llm response"]) return getSafeString(data["llm response"]);
 
         const pres = data.prescription || data;
         if (pres.response) return getSafeString(pres.response);
-        
+
         if (pres.medicine) {
             const med = getSafeString(pres.medicine);
             if (med) {
@@ -66,7 +67,6 @@ const ChatConversation = () => {
         return "I cannot provide a specific diagnosis. Please consult a doctor.";
     };
 
-    // --- 1. RESET ---
     useEffect(() => {
         activeChatIdRef.current = chatId;
 
@@ -88,7 +88,11 @@ const ChatConversation = () => {
         setApiError("");
         isStoppedRef.current = false;
 
-        fetchChatHistory();
+        setPage(1);
+        setHasMore(true);
+        setIsFetchingMore(false);
+
+        fetchChatHistory(1);
 
         return () => {
             if (audioRef.current) audioRef.current.pause();
@@ -96,60 +100,91 @@ const ChatConversation = () => {
         };
     }, [chatId]);
 
-    // --- 2. FETCH HISTORY ---
-    const fetchChatHistory = async () => {
+    const fetchChatHistory = async (pageNum = 1) => {
         if (state?.aiResponse) return;
         if (state?.triggerBot === false && hasHandledInitial.current) return;
         if (!chatId || chatId === "new" || chatId.length < 15) return;
 
         const currentRequestId = chatId;
+        if (pageNum > 1) setIsFetchingMore(true);
 
         try {
-            const response = await api.post(`/chat/get-chat-by-conversation_id/${chatId}`);
+            const response = await api.post(`/chat/get-chat-by-conversation_id/${chatId}?page=${pageNum}&limit=${LIMIT}`);
 
             if (activeChatIdRef.current !== currentRequestId) return;
+            const fetchedData = response.data.data || response.data || [];
 
-            if (response.data && Array.isArray(response.data)) {
-                const history = response.data.map(msg => {
-                    const isUser = msg.chat_by_user === true;
-                    const rawText = isUser ? msg.content : getSmartResponse(msg);
-                    const messageText = getSafeString(rawText);
-
-                    // --- FIX: READ 'uri' from GET API RESPONSE ---
-                    const mappedFiles = [];
-                    if (msg.uri && typeof msg.uri === 'string' && msg.uri.length > 10) {
-                        mappedFiles.push({
-                            preview: msg.uri, // API sends 'uri', we map it to 'preview'
-                            file: { type: 'image/jpeg' } 
-                        });
-                    }
-
-                    return {
-                        role: isUser ? "user" : "assistant",
-                        text: messageText,
-                        files: mappedFiles, // Add files to message
-                        id: msg._id,
-                        isTyping: false
-                    };
-                });
-
-                setChats(prev => {
-                    const existing = prev.find(c => String(c.id) === String(chatId));
-                    if (existing) {
-                        return prev.map(c => 
-                            String(c.id) === String(chatId) ? { ...c, messages: history } : c
-                        );
-                    } else {
-                        return [...prev, { id: chatId, title: "Conversation", messages: history }];
-                    }
-                });
+            if (!Array.isArray(fetchedData) || fetchedData.length === 0) {
+                setHasMore(false);
+                setIsFetchingMore(false);
+                return;
             }
+
+            if (fetchedData.length < LIMIT) {
+                setHasMore(false);
+            }
+
+            setPage(pageNum);
+
+            const newMessages = fetchedData.reverse().map(msg => {
+                const isUser = msg.chat_by_user === true;
+                const rawText = isUser ? msg.content : getSmartResponse(msg);
+                const messageText = getSafeString(rawText);
+
+                const mappedFiles = [];
+                if (msg.uri && typeof msg.uri === 'string' && msg.uri.length > 10) {
+                    mappedFiles.push({
+                        preview: msg.uri,
+                        file: { type: 'image/jpeg' }
+                    });
+                }
+
+                return {
+                    role: isUser ? "user" : "assistant",
+                    text: messageText,
+                    files: mappedFiles,
+                    id: msg._id,
+                    isTyping: false
+                };
+            });
+
+            setChats(prev => {
+                const existingChat = prev.find(c => String(c.id) === String(chatId));
+                if (existingChat && pageNum > 1) {
+                    const allDuplicates = newMessages.every(newMsg =>
+                        existingChat.messages.some(existing => existing.id === newMsg.id)
+                    );
+                    if (allDuplicates) {
+                        setHasMore(false);
+                        return prev;
+                    }
+                }
+
+                if (existingChat) {
+                    const combinedMessages = pageNum === 1
+                        ? newMessages
+                        : [...newMessages, ...existingChat.messages];
+
+                    const uniqueMessages = Array.from(new Map(combinedMessages.map(m => [m.id, m])).values());
+
+                    return prev.map(c =>
+                        String(c.id) === String(chatId)
+                            ? { ...c, messages: uniqueMessages }
+                            : c
+                    );
+                } else {
+                    return [...prev, { id: chatId, title: "Conversation", messages: newMessages }];
+                }
+            });
+
         } catch (error) {
             console.error("History fetch failed:", error);
+            setHasMore(false);
+        } finally {
+            setIsFetchingMore(false);
         }
     };
 
-    // --- 3. NEW CHAT REDIRECT ---
     useEffect(() => {
         if (state?.aiResponse && chatId && !hasHandledInitial.current) {
             const existingChat = chats.find(c => String(c.id) === String(chatId));
@@ -157,17 +192,15 @@ const ChatConversation = () => {
                 hasHandledInitial.current = true;
                 if (activeChatIdRef.current !== chatId) return;
 
-                setChats(prev => prev.map(chat => 
+                setChats(prev => prev.map(chat =>
                     String(chat.id) === String(chatId)
-                    ? { ...chat, messages: [...chat.messages, { role: "assistant", text: "", isTyping: true }] }
-                    : chat
+                        ? { ...chat, messages: [...chat.messages, { role: "assistant", text: "", isTyping: true }] }
+                        : chat
                 ));
                 playAndSync(state.aiResponse);
             }
         }
     }, [chatId, state, chats]);
-
-    // --- 4. STOP LOGIC ---
     const handleStopChat = () => {
         isStoppedRef.current = true;
         if (audioRef.current) {
@@ -179,7 +212,6 @@ const ChatConversation = () => {
         setBotStatus("idle");
     };
 
-    // --- 5. PLAY & SYNC ---
     const playAndSync = async (text) => {
         const currentRequestId = chatId;
         const safeText = getSafeString(text);
@@ -187,11 +219,11 @@ const ChatConversation = () => {
         try {
             isStoppedRef.current = false;
             activeTextRef.current = safeText;
-            setBotStatus("reviewing"); 
-            setDisplayedText(""); 
+            setBotStatus("reviewing");
+            setDisplayedText("");
 
             const response = await api.post("/chat/chat-tts", { text: safeText }, { responseType: 'blob' });
-            
+
             if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
 
             const audioUrl = URL.createObjectURL(response.data);
@@ -208,17 +240,17 @@ const ChatConversation = () => {
             audio.onplay = () => {
                 if (activeChatIdRef.current !== currentRequestId) { audio.pause(); return; }
                 if (isStoppedRef.current) { audio.pause(); setBotStatus("idle"); return; }
-                setBotStatus("replying"); 
-                startTyping(safeText);        
+                setBotStatus("replying");
+                startTyping(safeText);
             };
 
             audio.onended = () => {
                 if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
-                setBotStatus("idle");     
+                setBotStatus("idle");
             };
             audio.onerror = () => {
                 if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
-                startTyping(safeText); 
+                startTyping(safeText);
                 setBotStatus("idle");
             };
         } catch (error) {
@@ -230,7 +262,6 @@ const ChatConversation = () => {
         }
     };
 
-    // --- 6. TYPING ---
     const startTyping = (fullText) => {
         let index = 0;
         setDisplayedText("");
@@ -247,7 +278,7 @@ const ChatConversation = () => {
             } else {
                 completeTyping(fullText);
             }
-        }, 25); 
+        }, 25);
     };
 
     const completeTyping = (fullText) => {
@@ -260,11 +291,10 @@ const ChatConversation = () => {
         setDisplayedText("");
     };
 
-    // --- 7. SEND MESSAGE ---
     const handleSendMessage = async (text, attachedFiles = []) => {
         const currentRequestId = chatId;
         if (!text.trim() && attachedFiles.length === 0) return;
-        
+
         setIsRecording(false);
         setIsTranscribing(false);
         isStoppedRef.current = false;
@@ -274,14 +304,14 @@ const ChatConversation = () => {
         const userMsg = { role: "user", text, files: attachedFiles };
         const botPlaceholder = { role: "assistant", text: "", isTyping: true };
 
-        setBotStatus("reviewing"); 
-        
+        setBotStatus("reviewing");
+
         setChats(prev => {
             const existing = prev.find(c => String(c.id) === String(chatId));
             if (existing) {
-                const updatedChat = { 
-                    ...existing, 
-                    messages: [...existing.messages, userMsg, botPlaceholder] 
+                const updatedChat = {
+                    ...existing,
+                    messages: [...existing.messages, userMsg, botPlaceholder]
                 };
                 const otherChats = prev.filter(c => String(c.id) !== String(chatId));
                 return [updatedChat, ...otherChats];
@@ -304,12 +334,10 @@ const ChatConversation = () => {
             if (activeChatIdRef.current !== currentRequestId) return;
 
             const payload = { conversation_id: chatId, content: text };
-            
-            // FIX: Sending 'image_uri' for POST (Sending message)
-            if (imageUrl) payload.image_uri = imageUrl; 
+            if (imageUrl) payload.image_uri = imageUrl;
 
             const response = await api.post("/chat/existing-chat", payload);
-            
+
             if (activeChatIdRef.current !== currentRequestId) return;
             if (isStoppedRef.current) { setBotStatus("idle"); return; }
 
@@ -328,19 +356,22 @@ const ChatConversation = () => {
 
     return (
         <div key={chatId} className="relative flex flex-col w-full h-full bg-white overflow-hidden sm:px-4 px-2">
-            
-            <ChatStatus 
-                isRecording={isRecording} 
-                isTranscribing={isTranscribing} 
-                botStatus={botStatus} 
+
+            <ChatStatus
+                isRecording={isRecording}
+                isTranscribing={isTranscribing}
+                botStatus={botStatus}
             />
 
-            <MessageList 
-                messages={currentMessages} 
-                displayedText={displayedText} 
+            <MessageList
+                messages={currentMessages}
+                displayedText={displayedText}
+                loadMore={() => fetchChatHistory(page + 1)}
+                hasMore={hasMore}
+                loading={isFetchingMore}
             />
 
-            <ChatFooter 
+            <ChatFooter
                 onRecordingChange={setIsRecording}
                 onTranscribingStatus={setIsTranscribing}
                 onSend={handleSendMessage}

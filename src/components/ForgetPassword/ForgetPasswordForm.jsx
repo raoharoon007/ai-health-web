@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react"; // useState add kiya
+import { useState } from "react"; 
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -22,7 +22,7 @@ const ForgetPasswordForm = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting }, // isSubmitting for loading state
+    formState: { errors, isSubmitting },
   } = useForm({resolver: yupResolver(schema),mode: "onChange"});
 
   const onSubmit = async (data) => {

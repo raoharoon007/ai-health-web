@@ -3,7 +3,7 @@ import Chatbotlogo from '../../assets/images/Chatbot.webp';
 import ListeningAvatar from '../../assets/images/ListeningAvatar.webp';
 import Reviewbot from '../../assets/images/Reviewbot.webp';
 import Botvideo from '../../assets/videos/Botvideo.mp4';
-import ChatInput from "../Chat/ChatInput"; 
+import ChatInput from "../Chat/ChatInput";
 import AuthOverlay from "../Authoverlay/AuthOverlay";
 import MessageList from "../Conversationchat/MessageList";
 import ChatStatus from "../Conversationchat/ChatStatus";
@@ -68,13 +68,13 @@ const NewChat = () => {
 
             if (text && text.trim().length > 0) {
                 titleText = text.trim();
-                contentToSend = text.trim(); 
-            } 
+                contentToSend = text.trim();
+            }
             else if (attachedFiles.length > 0) {
                 const fileName = attachedFiles[0].file.name;
-                titleText = fileName.replace(/\.[^/.]+$/, ""); 
-                contentToSend = titleText; 
-            } 
+                titleText = fileName.replace(/\.[^/.]+$/, "");
+                contentToSend = titleText;
+            }
             else {
                 titleText = "New Conversation";
                 contentToSend = "New Conversation";
@@ -83,37 +83,36 @@ const NewChat = () => {
             let imageUrl = null;
             if (attachedFiles.length > 0) {
                 const uploadFormData = new FormData();
-                uploadFormData.append("file", attachedFiles[0].file); 
+                uploadFormData.append("file", attachedFiles[0].file);
 
                 const uploadResponse = await api.post("/chat/upload-medical-image", uploadFormData, {
                     headers: { "Content-Type": "multipart/form-data" }
                 });
-                
+
                 imageUrl = uploadResponse.data.url;
             }
 
             if (isRequestCancelled.current) { setBotStatus("idle"); return; }
-            const payload = { 
-                content: contentToSend, 
-                title: correctTitle     
+            const payload = {
+                content: contentToSend,
+                title: correctTitle
             };
-            
-            if (imageUrl) payload.image_uri = imageUrl; 
+
+            if (imageUrl) payload.image_uri = imageUrl;
 
             const response = await api.post("/chat/create-new-chat", payload);
 
             if (isRequestCancelled.current) { setBotStatus("idle"); return; }
 
             const newConversationId = response.data.conversation_id || response.data.id || response.data._id;
-            
-            // Safe Helper
+
             const getSafeString = (val) => {
                 if (!val) return "";
                 if (typeof val === 'string') return val;
                 if (typeof val === 'object') return getSafeString(val.response || val.content);
                 return String(val);
             };
-            
+
             const rawResponse = response.data["llm response"] || response.data.response;
             const aiReplyText = getSafeString(rawResponse) || "I can help you with that.";
 
@@ -123,7 +122,6 @@ const NewChat = () => {
                 return;
             }
 
-            // --- 4. UPDATE SIDEBAR (UI) ---
             setChats((prev) => {
                 const exists = prev.find(c => String(c.id) === String(newConversationId));
                 if (exists) return prev;
@@ -131,19 +129,18 @@ const NewChat = () => {
                 return [
                     {
                         id: newConversationId,
-                        title: correctTitle, 
-                        messages: [userMsg] 
+                        title: correctTitle,
+                        messages: [userMsg]
                     },
                     ...prev
                 ];
             });
 
-            // --- 5. NAVIGATE ---
             navigate(`/chat/${newConversationId}`, {
-                state: { 
-                    triggerBot: false, 
-                    firstMessage: text, 
-                    aiResponse: aiReplyText 
+                state: {
+                    triggerBot: false,
+                    firstMessage: text,
+                    aiResponse: aiReplyText
                 },
                 replace: true
             });
@@ -155,23 +152,21 @@ const NewChat = () => {
         }
     };
 
-    // UI Helper
     const isChatActive = localMessages.length > 0;
 
     return (
-        <div className={`relative flex flex-col w-full h-full bg-white sm:px-4 px-2 ${
-            isChatActive 
-            ? "overflow-hidden" 
-            : "justify-start pt-5 items-center overflow-x-hidden"
-        }`}>
+        <div className={`relative flex flex-col w-full h-full bg-white sm:px-4 px-2 ${isChatActive
+                ? "overflow-hidden"
+                : "justify-start pt-5 items-center overflow-x-hidden"
+            }`}>
             <AuthOverlay isOpen={showOverlay} onClose={() => setShowOverlay(false)} />
-            
+
             {isChatActive ? (
                 <>
                     <ChatStatus isRecording={isRecording} isTranscribing={isTranscribing} botStatus={botStatus} />
                     <MessageList messages={localMessages} displayedText="" />
                     <div className="shrink-0 pb-4 w-full max-w-5xl mx-auto">
-                         <div className="w-full">
+                        <div className="w-full">
                             <ChatInput
                                 onRecordingChange={handleRecordingChange}
                                 onTranscribingStatus={handleTranscribingStatus}
@@ -180,7 +175,13 @@ const NewChat = () => {
                                 disabled={botStatus !== "idle"}
                                 isTranscribing={isTranscribing}
                             />
-                         </div>
+                            {apiError && <div className="mt-2 text-warning text-xs text-center italic font-medium">{apiError}</div>}
+                            <div className="flex justify-center py-2">
+                                <span className="text-center text-mutedtext font-light text-[11px] sm:text-sm px-4">
+                                    AI can make mistakes. Consider checking important information.
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </>
             ) : (
@@ -189,10 +190,10 @@ const NewChat = () => {
                         {botStatus === "replying" ? (
                             <video src={Botvideo} autoPlay loop muted className="h-full w-full object-contain rounded-full" />
                         ) : (
-                            <img 
-                                src={isRecording ? ListeningAvatar : (isTranscribing || botStatus === "reviewing") ? Reviewbot : Chatbotlogo} 
-                                alt="Status" 
-                                className="h-full w-full object-contain rounded-full" 
+                            <img
+                                src={isRecording ? ListeningAvatar : (isTranscribing || botStatus === "reviewing") ? Reviewbot : Chatbotlogo}
+                                alt="Status"
+                                className="h-full w-full object-contain rounded-full"
                             />
                         )}
                     </div>

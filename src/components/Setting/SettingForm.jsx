@@ -14,14 +14,17 @@ import * as yup from "yup";
 import api from "../../api/axiosInstance";
 import { useUser } from "../../context/UserContext";
 
-// Validation Schema
 const schema = yup.object({
-    fullName: yup.string().required("Name is required"),
+    fullName: yup
+        .string()
+        .trim()
+        .required('Full name is required')
+        .matches(/^[A-Za-z]+( [A-Za-z]+)*$/, 'Only alphabets allowed and spaces must be between words'),
     email: yup.string().email("Invalid email").required("Email is required"),
-    age: yup.number().typeError("Age must be a number").positive().integer().min(1).required(),
-    weight: yup.number().typeError("Must be a number").positive().min(1).required(),
-    height: yup.number().typeError("Must be a number").positive().min(1).required(),
-    gender: yup.object().required("Required"),
+    age: yup.number().typeError("Age must be a number").required("Age is required").positive().integer().min(1).max(120),
+    weight: yup.number().typeError("Weight must be a number").required("Weight is required").positive().min(1),
+    height: yup.number().typeError("Height must be a number").required("Height is required").positive().min(30),
+    gender: yup.object().required("Please select gender").nullable(),
 }).required();
 
 const genderOptions = [
@@ -30,7 +33,6 @@ const genderOptions = [
 ];
 
 const SettingForm = () => {
-    // Get profile image and update function from context
     const { profileImage, updateProfileImage } = useUser();
 
     const [showInput, setShowInput] = useState(false);
@@ -41,7 +43,6 @@ const SettingForm = () => {
     const [isChangingPassword, setIsChangingPassword] = useState(false);
     const [showOverlay1, setShowOverlay1] = useState(false);
 
-    // Image Handling States
     const [localProfileImage, setLocalProfileImage] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
 
@@ -57,7 +58,6 @@ const SettingForm = () => {
     const currentName = watch("fullName");
     const currentEmail = watch("email");
 
-    // 1. Fetch User Data AND All Diseases
     const loadData = async () => {
         try {
             const [userRes, diseasesRes] = await Promise.all([
@@ -65,7 +65,6 @@ const SettingForm = () => {
                 api.get("/health-diseases/get-all-diseases")
             ]);
 
-            // Handle User Data
             const user = userRes.data?.data;
             if (user) {
                 setValue("fullName", user.full_name || "");
@@ -75,7 +74,6 @@ const SettingForm = () => {
                 setValue("height", user.height || "");
                 if (user.gender) setValue("gender", { value: user.gender, label: user.gender });
 
-                // Set existing profile image if available
                 if (user.profileimage_uri) {
                     setLocalProfileImage(user.profileimage_uri);
                 }
@@ -99,7 +97,6 @@ const SettingForm = () => {
         loadData();
     }, [setValue]);
 
-    // 2. Logic to Add Condition
     const handleAddCondition = async () => {
         const text = inputValue.trim();
         if (!text) return;
@@ -131,7 +128,6 @@ const SettingForm = () => {
         }
     };
 
-    // --- 3. Logic to DELETE Condition ---
     const removeCondition = async (idToRemove) => {
         if (!idToRemove) return;
 
@@ -145,27 +141,21 @@ const SettingForm = () => {
         }
     };
 
-    // 4. Save Profile & Associate Diseases (Updated Logic)
     const onSaveProfile = async (data) => {
         setApiError("");
         try {
-            let finalImageUri = profileImage || localProfileImage; 
+            let finalImageUri = profileImage || localProfileImage;
 
-            // --- STEP A: Upload Image if selected ---
             if (selectedFile) {
                 const formData = new FormData();
                 formData.append("file", selectedFile);
 
-                // Upload API Call
                 const uploadRes = await api.post("/chat/upload-medical-image", formData, {
                     headers: { "Content-Type": "multipart/form-data" }
                 });
 
-                // Get URL from response
                 finalImageUri = uploadRes.data.url;
             }
-
-            // --- STEP B: Update Personal Info with Image URL ---
             const profilePayload = {
                 full_name: data.fullName,
                 age: Number(data.age),
@@ -176,17 +166,12 @@ const SettingForm = () => {
             };
 
             await api.post("/user/personal-information", profilePayload);
-
-            // --- STEP C: Associate Diseases ---
             const diseaseIds = conditions.map(c => c._id);
             await api.post("/user/associate-disease", {
                 disease: diseaseIds
             });
 
-            // --- STEP D: Update Context with new profile image ---
             updateProfileImage(finalImageUri);
-
-            // Success
             setShowOverlay1(true);
             setTimeout(() => setShowOverlay1(false), 2000);
 
@@ -242,18 +227,18 @@ const SettingForm = () => {
                         <div className='border border-bordercolor rounded-xl bg-white p-3 flex items-center'>
                             <div className="relative h-16 w-16">
                                 {(localProfileImage || profileImage) ? (
-                                    <img src={localProfileImage || profileImage} alt="Profile" className="h-full w-full object-cover rounded-lg" />
+                                    <img src={localProfileImage || profileImage} alt="Profile" className="h-full w-full bg-cover bg-no-repeat object-cover rounded-xl" />
                                 ) : <SettingProfileIcon className="h-full w-full" />}
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
-                                <button onClick={() => fileInputRef.current.click()} className="absolute bottom-13 -right-1 cursor-pointer ">
+                                <button onClick={() => fileInputRef.current.click()} className="absolute bottom-13 -right-1.5 cursor-pointer">
                                     <EditIcon />
                                 </button>
                             </div>
                             <div className='flex flex-col ml-4'>
-                                <span className='text-sm xs:text-lg font-normal text-primarytext truncate max-w-50'>
+                                <span className='text-sm xs:text-lg font-normal text-primarytext w-full '>
                                     {currentName || "User"}
                                 </span>
-                                <span className=' text-xs xs:text-sm font-normal text-secondarytext truncate max-w-50'>
+                                <span className=' text-xs xs:text-sm font-normal text-secondarytext w-full  '>
                                     {currentEmail || "email@example.com"}
                                 </span>
                             </div>
@@ -262,25 +247,29 @@ const SettingForm = () => {
                         <form onSubmit={handleSubmit(onSaveProfile)} className='border border-bordercolor rounded-xl bg-white p-6 flex flex-col w-full gap-3'>
                             <div>
                                 <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Full Name</label>
-                                <input {...register("fullName")} type="text" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.fullName ? "border-red-500" : "border-bordercolor focus:border-primary"}`} />
+                                <input {...register("fullName")} type="text" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.fullName ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
+                                {errors.fullName && <span className="text-warning text-xs ml-1">{errors.fullName.message}</span>}
                             </div>
                             <div>
                                 <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Email</label>
-                                <input {...register("email")} disabled type="email" className={`w-full rounded-xl border px-4 py-3 cursor-not-allowed text-sm outline-none ${errors.email ? "border-red-500" : "border-bordercolor focus:border-primary"}`} />
+                                <input {...register("email")} disabled type="email" className={`w-full rounded-xl border px-4 py-3 cursor-not-allowed text-sm outline-none ${errors.email ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Age</label>
-                                    <input {...register("age")} type="number" className="w-full rounded-xl border border-bordercolor px-4 py-3 text-sm focus:border-primary outline-none" />
+                                    <input {...register("age")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.age ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
+                                    {errors.age && <span className="text-warning text-xs ml-1">{errors.age.message}</span>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Weight (kg)</label>
-                                    <input {...register("weight")} type="number" className="w-full rounded-xl border border-bordercolor px-4 py-3 text-sm focus:border-primary outline-none" />
+                                    <input {...register("weight")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.weight ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
+                                    {errors.weight && <span className="text-warning text-xs ml-1">{errors.weight.message}</span>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Height (cm)</label>
-                                    <input {...register("height")} type="number" className="w-full rounded-xl border border-bordercolor px-4 py-3 text-sm focus:border-primary outline-none" />
+                                    <input {...register("height")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.height ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
+                                    {errors.height && <span className="text-warning text-xs ml-1">{errors.height.message}</span>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Gender</label>
@@ -288,12 +277,15 @@ const SettingForm = () => {
                                         name="gender"
                                         control={control}
                                         render={({ field }) => (
-                                            <Select {...field} options={genderOptions} classNamePrefix="tw-select" components={{
+                                            <Select {...field} options={genderOptions}
+                                            className={`w-full ${errors.gender ? "tw-select-error" : ""}`}
+                                             classNamePrefix="tw-select" components={{
                                                 DropdownIndicator: () => <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-primarytext pointer-events-none" />,
                                                 IndicatorSeparator: () => null,
                                             }} />
                                         )}
                                     />
+                                    {errors.gender && <span className="text-warning text-xs ml-1 font-medium">{errors.gender.message}</span>}
                                 </div>
                             </div>
 
@@ -315,8 +307,6 @@ const SettingForm = () => {
                             </div>
                         </form>
                     </div>
-
-                    {/* Right Column: Health Conditions */}
                     <div className='flex flex-col gap-6'>
                         <div className='flex justify-between items-center'>
                             <span className='text-lg font-medium text-primarytext'>Health Conditions</span>

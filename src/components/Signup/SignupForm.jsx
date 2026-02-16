@@ -7,7 +7,6 @@ import EyeCloseIcon from "../../assets/icons/ri_eye-close-line.svg?react";
 import EyeShowIcon from "../../assets/icons/ri_eye-show-line.svg?react";
 import api from "../../api/axiosInstance";
 
-// Validation Schema 
 const schema = yup.object({
   fullName: yup
     .string()
@@ -81,7 +80,6 @@ const SignupForm = () => {
 
 
       <form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col gap-2 2xl:gap-4">
-        {/* Full Name */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-normal text-primarytext ml-1">Full Name</label>
           <input
@@ -93,8 +91,6 @@ const SignupForm = () => {
           />
           {errors.fullName && <span className="text-warning text-xs ml-1">{errors.fullName.message}</span>}
         </div>
-
-        {/* Email */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-normal text-primarytext ml-1">Email</label>
           <input
@@ -106,8 +102,6 @@ const SignupForm = () => {
           />
           {errors.email && <span className="text-warning text-xs ml-1">{errors.email.message}</span>}
         </div>
-
-        {/* Password */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-normal text-primarytext ml-1">Password</label>
           <div className="relative">
@@ -128,8 +122,6 @@ const SignupForm = () => {
           </div>
           {errors.password && <span className="text-warning text-xs ml-1">{errors.password.message}</span>}
         </div>
-
-        {/* Confirm Password */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-normal text-primarytext ml-1">Confirm Password</label>
           <div className="relative">
@@ -153,7 +145,7 @@ const SignupForm = () => {
 
         <button
           type="submit"
-          disabled={isSubmitting} // Request ke waqt button disable ho jayega
+          disabled={isSubmitting} 
           className="w-full text-center bg-primary hover:bg-hoverbtn text-white rounded-full py-3.5 font-semibold shadow-lg shadow-primary/10 cursor-pointer transition mt-2 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isSubmitting ? "Creating Account..." : "Sign Up"}

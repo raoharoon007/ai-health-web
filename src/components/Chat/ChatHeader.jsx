@@ -10,11 +10,8 @@ const ChatHeader = () => {
     const { profileImage, clearUserData } = useUser();
 
     const handleLogout = () => {
-        // Clear user data from context first
         clearUserData();
-        // Remove authentication token
         removeAuthToken();
-        // Navigate to login page
         navigate("/login", { replace: true });
     };
 
@@ -26,13 +23,9 @@ const ChatHeader = () => {
             </div>
 
             <div className="flex items-center gap-3 xs:gap-6">
-
-                {/* Logout Button */}
                 <button onClick={handleLogout} className="cursor-pointer">
                     <Logoutlogo />
                 </button>
-
-                {/* Profile */}
                 <Link to="/setting">
                     <img
                         src={profileImage || Profilelogo}

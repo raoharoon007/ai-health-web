@@ -169,7 +169,6 @@ const ChatInput = ({
         }
     };
 
-    // Show spinner if Parent says so OR Local processing is on
     const showSpinner = isTranscribing || isProcessing;
 
     return (
@@ -239,7 +238,6 @@ const ChatInput = ({
 
                     {!isRecording && (
                         <div className="relative w-full flex items-center">
-                            {/* Spinner Logic */}
                             {showSpinner && (
                                 <div className="absolute inset-0 flex items-center gap-2 bg-white z-10">
                                     <Linespinner className="animate-spin w-4 h-4" />

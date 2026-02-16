@@ -30,7 +30,7 @@ const schema = yup.object({
 }).required();
 
 const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
-    const [showCurrent, setShowCurrent] = useState(false); // Current pass ke liye state
+    const [showCurrent, setShowCurrent] = useState(false); 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [showOverlay1, setShowOverlay1] = useState(false);
@@ -38,8 +38,6 @@ const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
 
     const navigate = useNavigate();
     const location = useLocation();
-
-    // Check kar rahe hain ke kya hum Settings page par hain
     const isSettings = buttonText === "Save New Password";
 
     const {
@@ -48,11 +46,9 @@ const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: yupResolver(schema),
-        context: { isSettings }, // Schema ko context pass kiya
+        context: { isSettings }, 
         mode: "onChange"
     });
-
-    // ... baaki imports same rahenge
 
     const onSubmit = async (data) => {
         setApiError("");
@@ -61,22 +57,18 @@ const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
             const userOtp = location.state?.otp;
 
             if (isSettings) {
-                // Screenshot ke mutabiq: PATCH method aur correct endpoint
                 const payload = {
                     current_password: data.current_password,
                     new_password: data.password,
                     confirm_password: data.confirmPassword
                 };
 
-                // PATCH request (Screenshot 3 ke mutabiq)
                 await api.patch("/user/set-new-password", payload);
             } else {
-                // Forgot Password Flow
                 if (!userOtp) {
                     setApiError("Session expired. Please restart.");
                     return;
                 }
-                // Forgot password wala endpoint (agar change hai to update karein)
                 await api.post("/auth/set-new-password", {
                     email: userEmail,
                     otp: userOtp,
@@ -98,8 +90,6 @@ const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
     return (
         <>
             <form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col gap-4">
-
-                {/* 1. Current Password Field (Sirf Settings me dikhega) */}
                 {isSettings && (
                     <div className="flex flex-col gap-1.5">
                         <label className="text-sm font-normal text-primarytext ml-1">Current Password</label>
@@ -123,7 +113,6 @@ const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
                     </div>
                 )}
 
-                {/* 2. New Password Field */}
                 <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-normal text-primarytext ml-1">
                         {isSettings ? "New Password" : "Password"}
@@ -147,7 +136,6 @@ const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
                     {errors.password && <span className="text-warning text-xs italic">{errors.password.message}</span>}
                 </div>
 
-                {/* 3. Confirm Password Field */}
                 <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-normal text-primarytext ml-1">Confirm Password</label>
                     <div className="relative">

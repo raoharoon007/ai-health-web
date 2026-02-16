@@ -1,5 +1,4 @@
-import React from 'react';
-import ChatInput from "../Chat/ChatInput"; // Adjust import path as needed
+import ChatInput from "../Chat/ChatInput"; 
 
 const ChatFooter = ({ 
     onRecordingChange, 

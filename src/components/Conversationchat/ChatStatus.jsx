@@ -21,7 +21,6 @@ const ChatStatus = ({ isRecording, isTranscribing, botStatus }) => {
                 <span className="text-black font-semibold text-sm sm:text-base">
                     {isRecording && <span className="animate-pulse">Listening....</span>}
                     {isTranscribing && !isRecording && "Transcribing...."}
-                    {/* Yahan 'reviewing' check zaroori hai */}
                     {botStatus === "reviewing" && "Reviewing your input..."}
                     {botStatus === "replying" && "Speaking..."}
                 </span>

@@ -44,7 +44,6 @@ const VerifyotpForm = () => {
     return () => clearInterval(interval);
   }, [timer]);
 
-  // ---RESEND LOGIC---
   const handleResend = async () => {
     if (!canResend) return;
     setApiError("");
@@ -132,7 +131,10 @@ const VerifyotpForm = () => {
               render={({ field: { onChange, value } }) => (
                 <OtpInput
                   value={value}
-                  onChange={onChange}
+                  onChange={(otpValue) => {
+                    onChange(otpValue); 
+                    if (apiError) setApiError(""); 
+                  }}
                   numInputs={4}
                   renderSeparator={<span className="w-2 md:w-4"></span>}
                   shouldAutoFocus={true}
@@ -153,6 +155,12 @@ const VerifyotpForm = () => {
               </span>
             )}
           </div>
+          {(apiError || resendMessage) && (
+            <div className={`w-full text-xs py-2.5 px-4 rounded-xl text-center font-medium italic ${apiError ? "bg-warning/10 text-warning border border-warning/20" : "bg-primary/10 text-primary border border-primary/20"
+              }`}>
+              {apiError || resendMessage}
+            </div>
+          )}
 
           <button
             type="submit"
@@ -162,13 +170,6 @@ const VerifyotpForm = () => {
             {isSubmitting ? "Verifying..." : "Verify OTP"}
           </button>
         </form>
-
-        {(apiError || resendMessage) && (
-          <div className={`w-full text-xs py-2.5 px-4 rounded-xl text-center font-medium italic ${apiError ? "bg-warning/10 text-warning border border-warning/20" : "bg-primary/10 text-primary border border-primary/20"
-            }`}>
-            {apiError || resendMessage}
-          </div>
-        )}
 
         <p className="text-center font-normal text-sm text-secondarytext mt-4">
           {formatTime(timer)}

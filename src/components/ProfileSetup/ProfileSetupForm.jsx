@@ -38,9 +38,6 @@ const ProfileSetupForm = () => {
         { name: "weight", label: "Weight (kg)", placeholder: "Enter Your Weight" },
         { name: "height", label: "Height (cm)", placeholder: "Enter Your Height" }
     ];
-
-    // 1. Fetch All Diseases on Load
-
     const fetchDiseases = async () => {
         try {
             const response = await api.get("/health-diseases/get-all-diseases");
@@ -70,11 +67,9 @@ const ProfileSetupForm = () => {
                     if (existing) {
                         finalConditionIds.push(existing._id);
                     } else {
-                        // API call to Add Disease
                         const addResponse = await api.post("/health-diseases/add-disease", {
                             disease: data.otherConditions
                         });
-                        // Use 'id' or '_id' based on API response
                         const newId = addResponse.data.id || addResponse.data._id;
                         if (newId) finalConditionIds.push(newId);
                     }
@@ -83,7 +78,6 @@ const ProfileSetupForm = () => {
                 }
             }
 
-            // --- Step 2: Set Up Profile (Basic Info) ---
             const profilePayload = {
                 age: Number(data.age),
                 weight: Number(data.weight),
@@ -92,8 +86,6 @@ const ProfileSetupForm = () => {
             };
 
             await api.post("/user/set-up-profile", profilePayload);
-
-            // --- Step 3: Associate Diseases (Send IDs) ---
             if (finalConditionIds.length > 0) {
                 await api.post("/user/associate-disease", {
                     disease: finalConditionIds
@@ -163,7 +155,6 @@ const ProfileSetupForm = () => {
                 <div className="flex flex-col gap-4">
                     <h2 className="text-lg font-medium text-primarytext">Health Conditions</h2>
                     <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-3">
-                        {/* Dynamic Mapping from API Data */}
                         {availableDiseases.map((item) => (
                             <div key={item._id} className="w-full rounded-xl border border-bordercolor px-4 py-3 flex items-center ">
                                 <label className="flex items-center gap-2 text-secondarytext cursor-pointer w-full text-sm capitalize">

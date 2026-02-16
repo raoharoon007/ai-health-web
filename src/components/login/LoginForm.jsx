@@ -36,12 +36,12 @@ const LoginForm = () => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    clearErrors 
   } = useForm({ resolver: yupResolver(schema), mode: "onChange" });
 
   const onSubmit = async (data) => {
     setApiError("");
     try {
-      // --- 1. Send remember_me in Payload ---
       const response = await api.post("/auth/login", {
         email: data.email,
         password: data.password,
@@ -52,14 +52,16 @@ const LoginForm = () => {
 
       if (token) {
         setAuthToken(token);
-
-        // Navigation
         navigate("/chat");
       }
     } catch (error) {
       const errorMsg = error.response?.data?.detail || "Invalid email or password";
       setApiError(errorMsg);
     }
+  };
+
+  const handleInputChange = () => {
+    if (apiError) setApiError(""); 
   };
 
   return (
@@ -73,12 +75,12 @@ const LoginForm = () => {
         </p>
       </div>
       <form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col 2xl:gap-4 gap-2">
-
-        {/* Email Field */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-normal text-primarytext ml-1">Email</label>
           <input
-            {...register("email")}
+            {...register("email", { 
+                onChange: handleInputChange 
+            })}
             type="email"
             id="email"
             autoComplete="username"
@@ -88,13 +90,13 @@ const LoginForm = () => {
           />
           {errors.email && <span className="text-warning text-[11px] font-medium ml-1 italic">{errors.email.message}</span>}
         </div>
-
-        {/* Password Field */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-normal text-primarytext ml-1">Password</label>
           <div className="relative">
             <input
-              {...register("password")}
+              {...register("password", { 
+                  onChange: handleInputChange 
+              })}
               type={showPassword ? "text" : "password"}
               id="password"
               autoComplete="current-password"

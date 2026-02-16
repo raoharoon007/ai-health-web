@@ -1,26 +1,51 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ChatOptionsMenu from "./ChatOptionsMenu";
 import api from "../../api/axiosInstance";
 
-const ChatList = ({ chats, setChats = () => { }, query = "", onChatClick }) => {
+
+const ChatList = ({ chats, setChats = () => { }, query = "", onChatClick, loadMore, hasMore, loading, showOptionsMenu = true }) => {
   const navigate = useNavigate();
   const { chatId } = useParams();
+  const observerTarget = useRef(null);
 
   const [menuIndex, setMenuIndex] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [apiError, setApiError] = useState("");
 
-  // Bad data remove karein
   const validChats = chats.filter(chat => chat.id !== undefined && chat.id !== null);
 
-  // Filtering Logic
   const filteredChats = query
     ? validChats.filter(chat =>
       chat.title?.toLowerCase().includes(query.toLowerCase())
     )
     : validChats;
+
+  useEffect(() => {
+    if (query) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          if (loadMore) loadMore();
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, loading, loadMore, query]);
+
+
   const handleDelete = async (index) => {
     setApiError("");
     const chatIdToDelete = filteredChats[index].id;
@@ -74,9 +99,8 @@ const ChatList = ({ chats, setChats = () => { }, query = "", onChatClick }) => {
 
   return (
     <>
-      <div className="space-y-1 flex-1">
+      <div className="space-y-1 flex-1 pb-2">
 
-        {/* --- 1. NOT FOUND CHECK --- */}
         {query && filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <p className="text-secondarytext text-sm font-medium">
@@ -84,7 +108,6 @@ const ChatList = ({ chats, setChats = () => { }, query = "", onChatClick }) => {
             </p>
           </div>
         ) : (
-          /* --- 2. EXISTING LIST MAPPING --- */
           filteredChats.map((chat, index) => {
             const isActive = String(chat.id) === String(chatId);
             const isRenaming = editingIndex === index;
@@ -109,7 +132,7 @@ const ChatList = ({ chats, setChats = () => { }, query = "", onChatClick }) => {
                       onChange={(e) => setEditValue(e.target.value)}
                       onBlur={() => saveRename(index)}
                       onKeyDown={(e) => e.key === "Enter" && saveRename(index)}
-                      className="w-full bg-transparent outline-none text-sm text-primarytext border-b border-primary"
+                      className="w-full bg-transparent outline-none text-sm text-primarytext"
                     />
                   ) : (
                     <span className={`${isActive ? "text-primary font-medium" : "text-secondarytext"}`}>
@@ -118,7 +141,7 @@ const ChatList = ({ chats, setChats = () => { }, query = "", onChatClick }) => {
                   )}
                 </button>
 
-                {!isRenaming && (
+                {!isRenaming && showOptionsMenu && (
                   <ChatOptionsMenu
                     onRename={() => handleRename(index)}
                     onDelete={() => handleDelete(index)}
@@ -130,6 +153,16 @@ const ChatList = ({ chats, setChats = () => { }, query = "", onChatClick }) => {
             );
           })
         )}
+
+        {!query && (
+          <div className="py-2 flex justify-center w-full">
+            {loading && (
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            )}
+            <div ref={observerTarget} className="h-2 w-full" />
+          </div>
+        )}
+
       </div>
 
       {apiError && (

@@ -8,9 +8,7 @@ export const UserProvider = ({ children }) => {
     const [profileImage, setProfileImage] = useState(null);
     const [userInfo, setUserInfo] = useState(null);
 
-    // Load user data on mount
     const loadUserData = async () => {
-        // Only load user data if token exists
         const token = getAuthToken();
         if (!token) {
             return;
@@ -28,7 +26,6 @@ export const UserProvider = ({ children }) => {
             }
         } catch (error) {
             console.error("Error loading user data:", error);
-            // Don't retry if there's an error to avoid loops
         }
     };
 
@@ -36,12 +33,10 @@ export const UserProvider = ({ children }) => {
         loadUserData();
     }, []);
 
-    // Function to update profile image
     const updateProfileImage = (imageUrl) => {
         setProfileImage(imageUrl);
     };
 
-    // Function to clear user data on logout
     const clearUserData = () => {
         setProfileImage(null);
         setUserInfo(null);
@@ -54,7 +49,6 @@ export const UserProvider = ({ children }) => {
     );
 };
 
-// Custom hook to use the UserContext
 export const useUser = () => {
     const context = useContext(UserContext);
     if (!context) {

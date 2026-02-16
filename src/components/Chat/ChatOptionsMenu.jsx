@@ -54,9 +54,9 @@ const ChatOptionsMenu = ({ onRename, onDelete, index, setMenuIndex }) => {
     }, []);
 
     const handleRenameClick = () => {
-        onRename();        // Parent ka handleRename call hoga
-        setOpenmenu(false); // Menu hamesha band ho jayega
-        setMenuIndex(null); // Menu index reset
+        onRename();        
+        setOpenmenu(false); 
+        setMenuIndex(null); 
     };
 
     return (

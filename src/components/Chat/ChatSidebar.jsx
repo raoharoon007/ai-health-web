@@ -7,15 +7,13 @@ import ChatList from "./ChatList";
 import SearchChatModal from "./SearchChatModal";
 
 
-
-const ChatSidebar = ({ chats, setChats }) => {
+const ChatSidebar = ({ chats, setChats, loadMore, hasMore, loading }) => {
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <>
-      {/* Hamburger icon fixed on mobile */}
       <div className="fixed top-6.5 left-2 z-50 md:hidden">
         <SideMenuicon
           className="text-2xl cursor-pointer text-primarytext"
@@ -23,7 +21,6 @@ const ChatSidebar = ({ chats, setChats }) => {
         />
       </div>
 
-      {/* Sidebar */}
       <aside className={`
         fixed top-0 left-0 h-full z-50 bg-white border-r border-bordercolor
         w-60 transform transition-transform duration-300 ease-in-out
@@ -31,7 +28,6 @@ const ChatSidebar = ({ chats, setChats }) => {
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
         flex flex-col
       `}>
-        {/* Close button on mobile */}
         <div className="flex items-center justify-between md:hidden p-4 border-b border-bordercolor">
           <SideMenuicon
             className="text-2xl cursor-pointer text-primarytext"
@@ -57,14 +53,19 @@ const ChatSidebar = ({ chats, setChats }) => {
             </span>
           </button>
 
-          <div className="flex-1 overflow-y-auto mt-2 w-full px-2">
+          <div className="flex-1 overflow-y-auto mt-2 w-full px-2 custom-scrollbar">
             <h3 className="text-xs font-medium text-mutedtext mb-2 px-1.25">Chats</h3>
-            <ChatList chats={chats} setChats={setChats} />
+            
+            <ChatList 
+                chats={chats} 
+                setChats={setChats} 
+                loadMore={loadMore} 
+                hasMore={hasMore} 
+                loading={loading} 
+            />
           </div>
         </div>
       </aside>
-
-      {/* Overlay for mobile */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black opacity-25 z-40 md:hidden"
@@ -72,7 +73,6 @@ const ChatSidebar = ({ chats, setChats }) => {
         />
       )}
 
-      {/* Search Modal */}
       {isSearchOpen && (
         <SearchChatModal
           chats={chats}
@@ -80,8 +80,6 @@ const ChatSidebar = ({ chats, setChats }) => {
           onClose={() => setIsSearchOpen(false)}
         />
       )}
-
-      
     </>
   );
 };
