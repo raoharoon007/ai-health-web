@@ -1,8 +1,14 @@
 import axios from "axios";
 import { removeAuthToken } from "../utils/auth";
 
+// ✅ STEP 1: Define the logic OUTSIDE the object
+const baseURL = import.meta.env.MODE === "production"
+  ? "/ai-health"                         // 🟢 On Vercel: Use the secure proxy
+  : "http://98.81.203.81/ai-health";     // 🟡 On Localhost: Use the direct link
+
+// ✅ STEP 2: Pass the variable into axios
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL,
+    baseURL: baseURL, 
     headers: {
         "Content-Type": "application/json",
     },
