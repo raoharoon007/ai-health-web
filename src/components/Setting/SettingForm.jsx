@@ -83,7 +83,14 @@ const SettingForm = () => {
                 }
             }
 
-            const list = Array.isArray(diseasesRes.data) ? diseasesRes.data : diseasesRes.data.data || [];
+            // const list = Array.isArray(diseasesRes.data) ? diseasesRes.data : diseasesRes.data.data || [];
+            // setAllDiseases(list);
+            const list = Array.isArray(diseasesRes.data?.data)
+                ? diseasesRes.data.data
+                : Array.isArray(diseasesRes.data)
+                    ? diseasesRes.data
+                    : [];
+
             setAllDiseases(list);
 
         } catch (error) {
@@ -228,7 +235,7 @@ const SettingForm = () => {
                             <div className="relative h-16 w-16">
                                 {(localProfileImage || profileImage) ? (
                                     <img src={localProfileImage || profileImage} alt="Profile" className="h-full w-full bg-cover bg-no-repeat object-cover rounded-xl" />
-                                ) : <SettingProfileIcon className="h-full w-full" />}
+                                ) : <img src={SettingProfileIcon} alt="Default Profile" className="h-full w-full" />}
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
                                 <button onClick={() => fileInputRef.current.click()} className="absolute bottom-13 -right-1.5 cursor-pointer">
                                     <EditIcon />
@@ -258,17 +265,17 @@ const SettingForm = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Age</label>
-                                    <input {...register("age")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.age ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
+                                    <input {...register("age")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.age ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
                                     {errors.age && <span className="text-warning text-xs ml-1">{errors.age.message}</span>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Weight (kg)</label>
-                                    <input {...register("weight")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.weight ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
+                                    <input {...register("weight")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.weight ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
                                     {errors.weight && <span className="text-warning text-xs ml-1">{errors.weight.message}</span>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Height (cm)</label>
-                                    <input {...register("height")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.height ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
+                                    <input {...register("height")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.height ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
                                     {errors.height && <span className="text-warning text-xs ml-1">{errors.height.message}</span>}
                                 </div>
                                 <div>
@@ -278,11 +285,11 @@ const SettingForm = () => {
                                         control={control}
                                         render={({ field }) => (
                                             <Select {...field} options={genderOptions}
-                                            className={`w-full ${errors.gender ? "tw-select-error" : ""}`}
-                                             classNamePrefix="tw-select" components={{
-                                                DropdownIndicator: () => <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-primarytext pointer-events-none" />,
-                                                IndicatorSeparator: () => null,
-                                            }} />
+                                                className={`w-full ${errors.gender ? "tw-select-error" : ""}`}
+                                                classNamePrefix="tw-select" components={{
+                                                    DropdownIndicator: () => <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-primarytext pointer-events-none" />,
+                                                    IndicatorSeparator: () => null,
+                                                }} />
                                         )}
                                     />
                                     {errors.gender && <span className="text-warning text-xs ml-1 font-medium">{errors.gender.message}</span>}
