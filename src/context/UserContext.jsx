@@ -20,9 +20,7 @@ export const UserProvider = ({ children }) => {
 
             if (user) {
                 setUserInfo(user);
-                if (user.profileimage_uri) {
-                    setProfileImage(user.profileimage_uri);
-                }
+                setProfileImage(user.profileimage_uri || null);
             }
         } catch (error) {
             console.error("Error loading user data:", error);
@@ -31,6 +29,21 @@ export const UserProvider = ({ children }) => {
 
     useEffect(() => {
         loadUserData();
+        const handleAuthChange = () => {
+            const token = getAuthToken();
+            if (token) {
+                loadUserData();
+            } else {
+                setProfileImage(null);
+                setUserInfo(null);
+            }
+        };
+
+        window.addEventListener("auth-change", handleAuthChange);
+
+        return () => {
+            window.removeEventListener("auth-change", handleAuthChange);
+        };
     }, []);
 
     const updateProfileImage = (imageUrl) => {
