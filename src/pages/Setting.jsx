@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import Leftarrow from '../assets/icons/Arrow-left.svg?react ';
+import Leftarrow from '../assets/icons/Arrow-left.svg?react';
 import SettingForm from '../components/Setting/SettingForm';
 
 const Setting = () => {
