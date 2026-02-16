@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import SettingProfileIcon from '../../assets/icons/Setting-Profile.svg?react';
+import SettingProfileIcon from '../../assets/icons/Setting-Profile.svg';
 import Select from "react-select";
 import ChevronDown from "../../assets/icons/arrow-down.svg?react";
 import PlusIcon from "../../assets/icons/Plus-Icon.svg?react";
