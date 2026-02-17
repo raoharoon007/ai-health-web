@@ -258,6 +258,8 @@ const ChatInput = ({
                                 placeholder="Describe your Symptoms"
                                 className="w-full bg-transparent py-2 sm:py-3 text-sm sm:text-base font-medium placeholder:font-normal text-primarytext focus:outline-none resize-none max-h-40 sm:max-h-50 overflow-y-auto custom-scrollbar"
                                 style={{ minHeight: '36px' }}
+                                data-gramm="false"
+                                data-enable-grammarly="false"
                             />
                         </div>
                     )}
