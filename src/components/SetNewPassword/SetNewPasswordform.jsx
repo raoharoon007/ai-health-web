@@ -8,7 +8,6 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import api from "../../api/axiosInstance";
 
-
 const schema = yup.object({
     current_password: yup.string().when("$isSettings", {
         is: true,
@@ -22,7 +21,8 @@ const schema = yup.object({
         .matches(
             /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/,
             "Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character"
-        ),
+        )
+        .notOneOf([yup.ref('current_password')], "New password cannot be the same as current password"),
     confirmPassword: yup
         .string()
         .required("Please confirm your password")
@@ -30,7 +30,7 @@ const schema = yup.object({
 }).required();
 
 const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
-    const [showCurrent, setShowCurrent] = useState(false); 
+    const [showCurrent, setShowCurrent] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [showOverlay1, setShowOverlay1] = useState(false);
@@ -43,10 +43,11 @@ const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
     const {
         register,
         handleSubmit,
+        setError,
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: yupResolver(schema),
-        context: { isSettings }, 
+        context: { isSettings },
         mode: "onChange"
     });
 
@@ -84,9 +85,18 @@ const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
                 setTimeout(() => navigate("/login"), 2000);
             }
         } catch (error) {
-            setApiError(error.response?.data?.detail || "Update failed");
+            const errorMsg = error.response?.data?.detail || "Update failed";
+            if (isSettings && (errorMsg.toLowerCase().includes("incorrect") || errorMsg.toLowerCase().includes("current password"))) {
+                setError("current_password", {
+                    type: "server",
+                    message: "Current password is incorrect"
+                });
+            } else {
+                setApiError(errorMsg);
+            }
         }
     };
+
     return (
         <>
             <form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col gap-4">

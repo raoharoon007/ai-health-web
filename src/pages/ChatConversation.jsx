@@ -14,6 +14,8 @@ const ChatConversation = () => {
 
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
+    
+
     const [botStatus, setBotStatus] = useState(state?.aiResponse ? "reviewing" : "idle");
     const [displayedText, setDisplayedText] = useState("");
 
@@ -23,11 +25,15 @@ const ChatConversation = () => {
     const LIMIT = 20;
 
     const typingIntervalRef = useRef(null);
-    const audioRef = useRef(null);
+    const audioContextRef = useRef(null); 
     const hasHandledInitial = useRef(false);
     const isStoppedRef = useRef(false);
     const activeTextRef = useRef("");
     const activeChatIdRef = useRef(chatId);
+    
+    const nextStartTimeRef = useRef(0);
+    const leftoverRef = useRef(null); 
+    const audioCheckIntervalRef = useRef(null);
 
     const currentChat = chats.find(c => String(c.id) === String(chatId));
     const currentMessages = currentChat ? currentChat.messages : [];
@@ -67,13 +73,24 @@ const ChatConversation = () => {
         return "I cannot provide a specific diagnosis. Please consult a doctor.";
     };
 
+    const stopAudioStream = () => {
+        if (audioContextRef.current) {
+            audioContextRef.current.close().catch(() => {});
+            audioContextRef.current = null;
+        }
+        if (audioCheckIntervalRef.current) {
+            clearInterval(audioCheckIntervalRef.current);
+            audioCheckIntervalRef.current = null;
+        }
+        leftoverRef.current = null;
+        nextStartTimeRef.current = 0;
+    };
+
     useEffect(() => {
         activeChatIdRef.current = chatId;
 
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current = null;
-        }
+        stopAudioStream();
+        
         if (typingIntervalRef.current) {
             clearInterval(typingIntervalRef.current);
             typingIntervalRef.current = null;
@@ -81,7 +98,10 @@ const ChatConversation = () => {
 
         if (!state?.aiResponse) {
             setBotStatus("idle");
+        } else {
+            setBotStatus("reviewing");
         }
+
         setIsRecording(false);
         setIsTranscribing(false);
         setDisplayedText("");
@@ -95,7 +115,7 @@ const ChatConversation = () => {
         fetchChatHistory(1);
 
         return () => {
-            if (audioRef.current) audioRef.current.pause();
+            stopAudioStream();
             if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
         };
     }, [chatId]);
@@ -112,6 +132,7 @@ const ChatConversation = () => {
             const response = await api.post(`/chat/get-chat-by-conversation_id/${chatId}?page=${pageNum}&limit=${LIMIT}`);
 
             if (activeChatIdRef.current !== currentRequestId) return;
+
             const fetchedData = response.data.data || response.data || [];
 
             if (!Array.isArray(fetchedData) || fetchedData.length === 0) {
@@ -150,6 +171,7 @@ const ChatConversation = () => {
 
             setChats(prev => {
                 const existingChat = prev.find(c => String(c.id) === String(chatId));
+
                 if (existingChat && pageNum > 1) {
                     const allDuplicates = newMessages.every(newMsg =>
                         existingChat.messages.some(existing => existing.id === newMsg.id)
@@ -197,21 +219,23 @@ const ChatConversation = () => {
                         ? { ...chat, messages: [...chat.messages, { role: "assistant", text: "", isTyping: true }] }
                         : chat
                 ));
-                playAndSync(state.aiResponse);
+                
+                setTimeout(() => {
+                    playAndSync(state.aiResponse);
+                }, 50);
             }
         }
     }, [chatId, state, chats]);
+
     const handleStopChat = () => {
         isStoppedRef.current = true;
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-        }
+        stopAudioStream();
         if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
         if (botStatus === "replying" || botStatus === "reviewing") completeTyping(activeTextRef.current);
         setBotStatus("idle");
     };
 
+    // --- 5. PCM STREAMING PLAYBACK (ULTRA OPTIMIZED) ---
     const playAndSync = async (text) => {
         const currentRequestId = chatId;
         const safeText = getSafeString(text);
@@ -219,47 +243,126 @@ const ChatConversation = () => {
         try {
             isStoppedRef.current = false;
             activeTextRef.current = safeText;
-            setBotStatus("reviewing");
+            setBotStatus("reviewing"); 
             setDisplayedText("");
 
-            const response = await api.post("/chat/chat-tts", { text: safeText }, { responseType: 'blob' });
+            stopAudioStream();
 
-            if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
+            // PARALLEL STEP 1: Fire Network Request IMMEDIATELY
+            const baseURL = api.defaults.baseURL || ""; 
+            const token = localStorage.getItem("token");
+            
+            const fetchPromise = fetch(`${baseURL}/chat/chat-tts?text=${encodeURIComponent(safeText)}`, {
+                method: 'GET', 
+                headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+            });
 
-            const audioUrl = URL.createObjectURL(response.data);
-            if (audioRef.current) audioRef.current.pause();
+            // PARALLEL STEP 2: Warm up Audio Engine
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const audioCtx = new AudioContext({ 
+                sampleRate: 24000,
+                latencyHint: 'interactive'
+            });
+            audioContextRef.current = audioCtx;
+            if (audioCtx.state === 'suspended') { audioCtx.resume().catch(() => {}); }
 
-            const audio = new Audio(audioUrl);
-            audioRef.current = audio;
+            nextStartTimeRef.current = audioCtx.currentTime;
+            leftoverRef.current = null;
 
-            audio.oncanplaythrough = () => {
-                if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
-                audio.play().catch(e => console.error("Autoplay blocked:", e));
-            };
+            // STEP 3: Wait for Headers (Should be fast)
+            const response = await fetchPromise;
 
-            audio.onplay = () => {
-                if (activeChatIdRef.current !== currentRequestId) { audio.pause(); return; }
-                if (isStoppedRef.current) { audio.pause(); setBotStatus("idle"); return; }
+            if (!response.body) throw new Error("No stream body");
+
+            const reader = response.body.getReader();
+            let hasStartedTyping = false;
+
+            // STEP 4: Process Stream
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (isStoppedRef.current || activeChatIdRef.current !== currentRequestId) {
+                    reader.cancel();
+                    stopAudioStream();
+                    break;
+                }
+
+                if (done) {
+                    // Stream download complete, wait for playback to finish
+                    checkAudioEnd();
+                    break;
+                }
+
+                let chunk = value;
+
+                // --- PCM Decoding ---
+                if (leftoverRef.current !== null) {
+                    let temp = new Uint8Array(chunk.length + 1);
+                    temp[0] = leftoverRef.current;
+                    temp.set(chunk, 1);
+                    chunk = temp;
+                    leftoverRef.current = null;
+                }
+
+                if (chunk.length % 2 !== 0) {
+                    leftoverRef.current = chunk[chunk.length - 1];
+                    chunk = chunk.slice(0, chunk.length - 1);
+                }
+
+                if (chunk.length === 0) continue;
+
+                // Convert Bytes to Audio Float Data
+                const int16Array = new Int16Array(chunk.buffer, chunk.byteOffset, chunk.byteLength / 2);
+                const float32Array = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                    float32Array[i] = int16Array[i] / 32768.0;
+                }
+
+                const buffer = audioCtx.createBuffer(1, float32Array.length, 24000); 
+                buffer.getChannelData(0).set(float32Array);
+
+                const source = audioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioCtx.destination);
+
+                // Gapless Scheduling logic
+                const scheduleTime = Math.max(nextStartTimeRef.current, audioCtx.currentTime);
+                source.start(scheduleTime);
+                nextStartTimeRef.current = scheduleTime + buffer.duration;
+
+                // --- INSTANT START: Switch to 'Speaking' on FIRST chunk ---
+                if (!hasStartedTyping) {
+                    hasStartedTyping = true;
+                    setBotStatus("replying");
+                    startTyping(safeText);   
+                }
+            }
+
+        } catch (error) {
+            console.error("PCM Stream Error:", error);
+            if (activeChatIdRef.current === currentRequestId && !isStoppedRef.current) {
                 setBotStatus("replying");
                 startTyping(safeText);
-            };
-
-            audio.onended = () => {
-                if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
-                setBotStatus("idle");
-            };
-            audio.onerror = () => {
-                if (activeChatIdRef.current !== currentRequestId || isStoppedRef.current) return;
-                startTyping(safeText);
-                setBotStatus("idle");
-            };
-        } catch (error) {
-            console.error("TTS Error:", error);
-            if (activeChatIdRef.current === currentRequestId && !isStoppedRef.current) {
-                startTyping(safeText);
-                setBotStatus("idle");
+                setTimeout(() => setBotStatus("idle"), safeText.length * 50 + 2000);
             }
         }
+    };
+
+    const checkAudioEnd = () => {
+        if (audioCheckIntervalRef.current) clearInterval(audioCheckIntervalRef.current);
+        
+        audioCheckIntervalRef.current = setInterval(() => {
+            const ctx = audioContextRef.current;
+            if (!ctx || isStoppedRef.current) {
+                if(audioCheckIntervalRef.current) clearInterval(audioCheckIntervalRef.current);
+                return;
+            }
+            if (ctx.currentTime >= nextStartTimeRef.current + 0.1) {
+                setBotStatus("idle");
+                if(audioCheckIntervalRef.current) clearInterval(audioCheckIntervalRef.current);
+                stopAudioStream();
+            }
+        }, 150); 
     };
 
     const startTyping = (fullText) => {
@@ -278,7 +381,7 @@ const ChatConversation = () => {
             } else {
                 completeTyping(fullText);
             }
-        }, 25);
+        }, 30); 
     };
 
     const completeTyping = (fullText) => {
@@ -299,7 +402,7 @@ const ChatConversation = () => {
         setIsTranscribing(false);
         isStoppedRef.current = false;
         setApiError("");
-        if (audioRef.current) audioRef.current.pause();
+        stopAudioStream();
 
         const userMsg = { role: "user", text, files: attachedFiles };
         const botPlaceholder = { role: "assistant", text: "", isTyping: true };
@@ -342,6 +445,7 @@ const ChatConversation = () => {
             if (isStoppedRef.current) { setBotStatus("idle"); return; }
 
             const aiReply = getSmartResponse(response.data);
+            
             playAndSync(aiReply);
 
         } catch (error) {
