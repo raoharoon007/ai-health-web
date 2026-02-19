@@ -15,7 +15,6 @@ const ChatConversation = () => {
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
     
-
     const [botStatus, setBotStatus] = useState(state?.aiResponse ? "reviewing" : "idle");
     const [displayedText, setDisplayedText] = useState("");
 
@@ -235,7 +234,7 @@ const ChatConversation = () => {
         setBotStatus("idle");
     };
 
-    // --- 5. PCM STREAMING PLAYBACK (ULTRA OPTIMIZED) ---
+    // --- 5. PCM STREAMING PLAYBACK (FIXED SIZE BUFFER / QUEUE ADDED) ---
     const playAndSync = async (text) => {
         const currentRequestId = chatId;
         const safeText = getSafeString(text);
@@ -248,7 +247,6 @@ const ChatConversation = () => {
 
             stopAudioStream();
 
-            // PARALLEL STEP 1: Fire Network Request IMMEDIATELY
             const baseURL = api.defaults.baseURL || ""; 
             const token = localStorage.getItem("token");
             
@@ -257,7 +255,6 @@ const ChatConversation = () => {
                 headers: { 'Authorization': token ? `Bearer ${token}` : '' }
             });
 
-            // PARALLEL STEP 2: Warm up Audio Engine
             const AudioContext = window.AudioContext || window.webkitAudioContext;
             const audioCtx = new AudioContext({ 
                 sampleRate: 24000,
@@ -269,15 +266,18 @@ const ChatConversation = () => {
             nextStartTimeRef.current = audioCtx.currentTime;
             leftoverRef.current = null;
 
-            // STEP 3: Wait for Headers (Should be fast)
             const response = await fetchPromise;
 
             if (!response.body) throw new Error("No stream body");
 
             const reader = response.body.getReader();
             let hasStartedTyping = false;
+            
+            // --- BUFFER QUEUE LOGIC START ---
+            let accumulatedBytes = new Uint8Array(0);
+            const FIXED_CHUNK_SIZE = 12000; 
+            let isFirstPlay = true;
 
-            // STEP 4: Process Stream
             while (true) {
                 const { done, value } = await reader.read();
                 
@@ -287,54 +287,77 @@ const ChatConversation = () => {
                     break;
                 }
 
+                // Add incoming network bytes to our buffer queue
+                if (value) {
+                    let temp = new Uint8Array(accumulatedBytes.length + value.length);
+                    temp.set(accumulatedBytes, 0);
+                    temp.set(value, accumulatedBytes.length);
+                    accumulatedBytes = temp;
+                }
+
+                while (accumulatedBytes.length >= FIXED_CHUNK_SIZE || (done && accumulatedBytes.length > 0)) {
+                    
+                    let chunkToProcess;
+                    if (accumulatedBytes.length >= FIXED_CHUNK_SIZE) {
+                        chunkToProcess = accumulatedBytes.slice(0, FIXED_CHUNK_SIZE);
+                        accumulatedBytes = accumulatedBytes.slice(FIXED_CHUNK_SIZE);
+                    } else {
+                       
+                        chunkToProcess = accumulatedBytes;
+                        accumulatedBytes = new Uint8Array(0);
+                    }
+
+                    // --- PCM Decoding on Fixed Chunk ---
+                    if (leftoverRef.current !== null) {
+                        let temp = new Uint8Array(chunkToProcess.length + 1);
+                        temp[0] = leftoverRef.current;
+                        temp.set(chunkToProcess, 1);
+                        chunkToProcess = temp;
+                        leftoverRef.current = null;
+                    }
+
+                    if (chunkToProcess.length % 2 !== 0) {
+                        leftoverRef.current = chunkToProcess[chunkToProcess.length - 1];
+                        chunkToProcess = chunkToProcess.slice(0, chunkToProcess.length - 1);
+                    }
+
+                    if (chunkToProcess.length === 0) continue;
+
+                    const int16Array = new Int16Array(chunkToProcess.buffer, chunkToProcess.byteOffset, chunkToProcess.byteLength / 2);
+                    const float32Array = new Float32Array(int16Array.length);
+                    for (let i = 0; i < int16Array.length; i++) {
+                        float32Array[i] = int16Array[i] / 32768.0;
+                    }
+
+                    const buffer = audioCtx.createBuffer(1, float32Array.length, 24000); 
+                    buffer.getChannelData(0).set(float32Array);
+
+                    const source = audioCtx.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(audioCtx.destination);
+
+                    
+                    if (isFirstPlay) {
+                        nextStartTimeRef.current = audioCtx.currentTime + 0.3;
+                        isFirstPlay = false;
+                    } else if (nextStartTimeRef.current < audioCtx.currentTime) {
+                        nextStartTimeRef.current = audioCtx.currentTime + 0.1;
+                    }
+
+                    const scheduleTime = nextStartTimeRef.current;
+                    source.start(scheduleTime);
+                    nextStartTimeRef.current = scheduleTime + buffer.duration;
+
+                    if (!hasStartedTyping) {
+                        hasStartedTyping = true;
+                        setBotStatus("replying"); 
+                        startTyping(safeText);
+                    }
+                }
+
                 if (done) {
-                    // Stream download complete, wait for playback to finish
                     checkAudioEnd();
                     break;
-                }
-
-                let chunk = value;
-
-                // --- PCM Decoding ---
-                if (leftoverRef.current !== null) {
-                    let temp = new Uint8Array(chunk.length + 1);
-                    temp[0] = leftoverRef.current;
-                    temp.set(chunk, 1);
-                    chunk = temp;
-                    leftoverRef.current = null;
-                }
-
-                if (chunk.length % 2 !== 0) {
-                    leftoverRef.current = chunk[chunk.length - 1];
-                    chunk = chunk.slice(0, chunk.length - 1);
-                }
-
-                if (chunk.length === 0) continue;
-
-                // Convert Bytes to Audio Float Data
-                const int16Array = new Int16Array(chunk.buffer, chunk.byteOffset, chunk.byteLength / 2);
-                const float32Array = new Float32Array(int16Array.length);
-                for (let i = 0; i < int16Array.length; i++) {
-                    float32Array[i] = int16Array[i] / 32768.0;
-                }
-
-                const buffer = audioCtx.createBuffer(1, float32Array.length, 24000); 
-                buffer.getChannelData(0).set(float32Array);
-
-                const source = audioCtx.createBufferSource();
-                source.buffer = buffer;
-                source.connect(audioCtx.destination);
-
-                // Gapless Scheduling logic
-                const scheduleTime = Math.max(nextStartTimeRef.current, audioCtx.currentTime);
-                source.start(scheduleTime);
-                nextStartTimeRef.current = scheduleTime + buffer.duration;
-
-                // --- INSTANT START: Switch to 'Speaking' on FIRST chunk ---
-                if (!hasStartedTyping) {
-                    hasStartedTyping = true;
-                    setBotStatus("replying");
-                    startTyping(safeText);   
                 }
             }
 
