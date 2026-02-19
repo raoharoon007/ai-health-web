@@ -2,7 +2,7 @@ import { useState } from "react";
 import ChatList from "./ChatList";
 import CrossIcon from '../../assets/icons/Cross-icon.svg?react';
 
-const SearchChatModal = ({ chats, onClose }) => {
+const SearchChatModal = ({ chats, setChats, loadMore, hasMore, loading, onClose }) => {
   const [query, setQuery] = useState("");
 
 
@@ -23,9 +23,17 @@ const SearchChatModal = ({ chats, onClose }) => {
           />
         </div>
 
-
         <div className="px-6 pb-6 max-h-64 overflow-y-auto space-y-3">
-          <ChatList chats={chats} setChats={() => { }} query={query} onChatClick={onClose} showOptionsMenu={false} />
+          <ChatList
+            chats={chats}
+            setChats={setChats || (() => { })}
+            query={query}
+            onChatClick={onClose}
+            showOptionsMenu={false}
+            loadMore={loadMore}
+            hasMore={hasMore}
+            loading={loading}
+          />
         </div>
 
       </div>

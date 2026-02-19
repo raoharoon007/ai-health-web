@@ -55,13 +55,13 @@ const ChatSidebar = ({ chats, setChats, loadMore, hasMore, loading }) => {
 
           <div className="flex-1 overflow-y-auto mt-2 w-full px-2 custom-scrollbar">
             <h3 className="text-xs font-medium text-mutedtext mb-2 px-1.25">Chats</h3>
-            
-            <ChatList 
-                chats={chats} 
-                setChats={setChats} 
-                loadMore={loadMore} 
-                hasMore={hasMore} 
-                loading={loading} 
+
+            <ChatList
+              chats={chats}
+              setChats={setChats}
+              loadMore={loadMore}
+              hasMore={hasMore}
+              loading={loading}
             />
           </div>
         </div>
@@ -77,6 +77,9 @@ const ChatSidebar = ({ chats, setChats, loadMore, hasMore, loading }) => {
         <SearchChatModal
           chats={chats}
           setChats={setChats}
+          loadMore={loadMore}
+          hasMore={hasMore}
+          loading={loading}
           onClose={() => setIsSearchOpen(false)}
         />
       )}
