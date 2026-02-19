@@ -49,6 +49,8 @@ const SettingForm = () => {
     const fileInputRef = useRef(null);
     const [loading, setLoading] = useState(true);
     const [apiError, setApiError] = useState("");
+    
+    const [isSaving, setIsSaving] = useState(false);
 
     const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm({
         resolver: yupResolver(schema),
@@ -143,6 +145,8 @@ const SettingForm = () => {
 
     const onSaveProfile = async (data) => {
         setApiError("");
+        setIsSaving(true); 
+
         try {
             let finalImageUri = profileImage || localProfileImage;
 
@@ -172,6 +176,8 @@ const SettingForm = () => {
             });
 
             updateProfileImage(finalImageUri);
+            
+            setIsSaving(false);
             setShowOverlay1(true);
             setTimeout(() => setShowOverlay1(false), 2000);
 
@@ -179,6 +185,7 @@ const SettingForm = () => {
             console.error("Save Error:", error);
             const message = error.response?.data?.detail || "Update failed! Please try again.";
             setApiError(message);
+            setIsSaving(false);
         }
     };
 
@@ -341,8 +348,11 @@ const SettingForm = () => {
                         </div>
 
                         <div className='flex justify-center md:justify-end mt-auto'>
-                            <button onClick={handleSubmit(onSaveProfile)} className='w-full sm:w-61 bg-primary hover:bg-hoverbtn rounded-full py-3 text-white font-semibold shadow-lg transition active:scale-95 cursor-pointer'>
-                                Save Changes
+                            <button 
+                                onClick={handleSubmit(onSaveProfile)} 
+                                disabled={isSaving}
+                                className='w-full sm:w-61 bg-primary hover:bg-hoverbtn disabled:opacity-70 disabled:cursor-not-allowed rounded-full py-3 text-white font-semibold shadow-lg transition active:scale-95 cursor-pointer'>
+                                {isSaving ? "Saving..." : "Save Changes"}
                             </button>
                         </div>
                     </div>
