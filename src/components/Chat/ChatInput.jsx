@@ -9,20 +9,20 @@ import VoiceWave from "./VoiceWave";
 import api from "../../api/axiosInstance";
 
 
-const ChatInput = ({ 
-    onRecordingChange = () => { }, 
-    onSend = () => { }, 
-    onStop = () => { }, 
-    onTranscribingStatus = () => { }, 
-    disabled = false, 
-    isTranscribing = false 
+const ChatInput = ({
+    onRecordingChange = () => { },
+    onSend = () => { },
+    onStop = () => { },
+    onTranscribingStatus = () => { },
+    disabled = false,
+    isTranscribing = false
 }) => {
 
     const [message, setMessage] = useState("");
     const [isRecording, setIsRecording] = useState(false);
     const [files, setFiles] = useState([]);
     const [fileLimitError, setFileLimitError] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false); 
+    const [isProcessing, setIsProcessing] = useState(false);
     const [audioStream, setAudioStream] = useState(null);
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
@@ -49,16 +49,16 @@ const ChatInput = ({
                     audioChunksRef.current.push(event.data);
                 }
             };
-            
+
             mediaRecorder.onstop = async () => {
                 setIsProcessing(true);
-                onTranscribingStatus(true); 
-                
+                onTranscribingStatus(true);
+
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
                 const audioFile = new File([audioBlob], "voice_message.wav", { type: "audio/wav" });
-                
+
                 await handleTranscribe(audioFile);
-                
+
                 stream.getTracks().forEach(track => track.stop());
                 setAudioStream(null);
             };
@@ -75,7 +75,7 @@ const ChatInput = ({
 
     const stopRecording = () => {
         if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop(); 
+            mediaRecorderRef.current.stop();
             setIsRecording(false);
             onRecordingChange(false);
         }
@@ -117,7 +117,7 @@ const ChatInput = ({
             console.error("Transcription failed:", error);
         } finally {
             setIsProcessing(false);
-            onTranscribingStatus(false); 
+            onTranscribingStatus(false);
         }
     };
 
@@ -251,16 +251,25 @@ const ChatInput = ({
                                 rows={1}
                                 value={message}
                                 onChange={(e) => {
-                                    setMessage(e.target.value);
-                                    adjustHeight();
+                                    if (e.target.value.length <= 1000) {
+                                        setMessage(e.target.value);
+                                        adjustHeight();
+                                    }
                                 }}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Describe your Symptoms"
                                 className="w-full bg-transparent py-2 sm:py-3 text-sm sm:text-base font-medium placeholder:font-normal text-primarytext focus:outline-none resize-none max-h-40 sm:max-h-50 overflow-y-auto custom-scrollbar"
                                 style={{ minHeight: '36px' }}
+                                maxLength={1000}
                                 data-gramm="false"
                                 data-enable-grammarly="false"
                             />
+                            {message.length >= 900 && (
+                                <span className={`absolute bottom-1 right-1 text-[10px] sm:text-xs font-medium pointer-events-none ${message.length >= 1000 ? 'text-warning' : 'text-orange-400'
+                                    }`}>
+                                    {message.length}/1000
+                                </span>
+                            )}
                         </div>
                     )}
                 </div>
