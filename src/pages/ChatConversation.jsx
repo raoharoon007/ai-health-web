@@ -14,8 +14,10 @@ const ChatConversation = () => {
 
     const [isRecording, setIsRecording] = useState(false);
     const [isTranscribing, setIsTranscribing] = useState(false);
-    
-    const [botStatus, setBotStatus] = useState(state?.aiResponse ? "reviewing" : "idle");
+
+    const aiResponseKey = `aiResponse_handled_${chatId}`;
+    const alreadyHandled = sessionStorage.getItem(aiResponseKey) === "true";
+    const [botStatus, setBotStatus] = useState(state?.aiResponse && !alreadyHandled ? "reviewing" : "idle");
     const [displayedText, setDisplayedText] = useState("");
 
     const [page, setPage] = useState(1);
@@ -24,14 +26,14 @@ const ChatConversation = () => {
     const LIMIT = 20;
 
     const typingIntervalRef = useRef(null);
-    const audioContextRef = useRef(null); 
+    const audioContextRef = useRef(null);
     const hasHandledInitial = useRef(false);
     const isStoppedRef = useRef(false);
     const activeTextRef = useRef("");
     const activeChatIdRef = useRef(chatId);
-    
+
     const nextStartTimeRef = useRef(0);
-    const leftoverRef = useRef(null); 
+    const leftoverRef = useRef(null);
     const audioCheckIntervalRef = useRef(null);
 
     const currentChat = chats.find(c => String(c.id) === String(chatId));
@@ -74,7 +76,7 @@ const ChatConversation = () => {
 
     const stopAudioStream = () => {
         if (audioContextRef.current) {
-            audioContextRef.current.close().catch(() => {});
+            audioContextRef.current.close().catch(() => { });
             audioContextRef.current = null;
         }
         if (audioCheckIntervalRef.current) {
@@ -89,13 +91,15 @@ const ChatConversation = () => {
         activeChatIdRef.current = chatId;
 
         stopAudioStream();
-        
+
         if (typingIntervalRef.current) {
             clearInterval(typingIntervalRef.current);
             typingIntervalRef.current = null;
         }
 
-        if (!state?.aiResponse) {
+        const _aiResponseKey = `aiResponse_handled_${chatId}`;
+        const _alreadyHandled = sessionStorage.getItem(_aiResponseKey) === "true";
+        if (!state?.aiResponse || _alreadyHandled) {
             setBotStatus("idle");
         } else {
             setBotStatus("reviewing");
@@ -120,7 +124,9 @@ const ChatConversation = () => {
     }, [chatId]);
 
     const fetchChatHistory = async (pageNum = 1) => {
-        if (state?.aiResponse) return;
+        const _aiResponseKey = `aiResponse_handled_${chatId}`;
+        const _alreadyHandled = sessionStorage.getItem(_aiResponseKey) === "true";
+        if (state?.aiResponse && !_alreadyHandled) return;
         if (state?.triggerBot === false && hasHandledInitial.current) return;
         if (!chatId || chatId === "new" || chatId.length < 15) return;
 
@@ -207,10 +213,14 @@ const ChatConversation = () => {
     };
 
     useEffect(() => {
-        if (state?.aiResponse && chatId && !hasHandledInitial.current) {
+        const _aiResponseKey = `aiResponse_handled_${chatId}`;
+        const _alreadyHandled = sessionStorage.getItem(_aiResponseKey) === "true";
+
+        if (state?.aiResponse && chatId && !hasHandledInitial.current && !_alreadyHandled) {
             const existingChat = chats.find(c => String(c.id) === String(chatId));
             if (existingChat) {
                 hasHandledInitial.current = true;
+                sessionStorage.setItem(_aiResponseKey, "true");
                 if (activeChatIdRef.current !== chatId) return;
 
                 setChats(prev => prev.map(chat =>
@@ -218,7 +228,7 @@ const ChatConversation = () => {
                         ? { ...chat, messages: [...chat.messages, { role: "assistant", text: "", isTyping: true }] }
                         : chat
                 ));
-                
+
                 setTimeout(() => {
                     playAndSync(state.aiResponse);
                 }, 50);
@@ -242,26 +252,26 @@ const ChatConversation = () => {
         try {
             isStoppedRef.current = false;
             activeTextRef.current = safeText;
-            setBotStatus("reviewing"); 
+            setBotStatus("reviewing");
             setDisplayedText("");
 
             stopAudioStream();
 
-            const baseURL = api.defaults.baseURL || ""; 
+            const baseURL = api.defaults.baseURL || "";
             const token = localStorage.getItem("token");
-            
+
             const fetchPromise = fetch(`${baseURL}/chat/chat-tts?text=${encodeURIComponent(safeText)}`, {
-                method: 'GET', 
+                method: 'GET',
                 headers: { 'Authorization': token ? `Bearer ${token}` : '' }
             });
 
             const AudioContext = window.AudioContext || window.webkitAudioContext;
-            const audioCtx = new AudioContext({ 
+            const audioCtx = new AudioContext({
                 sampleRate: 24000,
                 latencyHint: 'interactive'
             });
             audioContextRef.current = audioCtx;
-            if (audioCtx.state === 'suspended') { audioCtx.resume().catch(() => {}); }
+            if (audioCtx.state === 'suspended') { audioCtx.resume().catch(() => { }); }
 
             nextStartTimeRef.current = audioCtx.currentTime;
             leftoverRef.current = null;
@@ -272,15 +282,15 @@ const ChatConversation = () => {
 
             const reader = response.body.getReader();
             let hasStartedTyping = false;
-            
+
             // --- BUFFER QUEUE LOGIC START ---
             let accumulatedBytes = new Uint8Array(0);
-            const FIXED_CHUNK_SIZE = 12000; 
+            const FIXED_CHUNK_SIZE = 12000;
             let isFirstPlay = true;
 
             while (true) {
                 const { done, value } = await reader.read();
-                
+
                 if (isStoppedRef.current || activeChatIdRef.current !== currentRequestId) {
                     reader.cancel();
                     stopAudioStream();
@@ -296,13 +306,13 @@ const ChatConversation = () => {
                 }
 
                 while (accumulatedBytes.length >= FIXED_CHUNK_SIZE || (done && accumulatedBytes.length > 0)) {
-                    
+
                     let chunkToProcess;
                     if (accumulatedBytes.length >= FIXED_CHUNK_SIZE) {
                         chunkToProcess = accumulatedBytes.slice(0, FIXED_CHUNK_SIZE);
                         accumulatedBytes = accumulatedBytes.slice(FIXED_CHUNK_SIZE);
                     } else {
-                       
+
                         chunkToProcess = accumulatedBytes;
                         accumulatedBytes = new Uint8Array(0);
                     }
@@ -329,14 +339,14 @@ const ChatConversation = () => {
                         float32Array[i] = int16Array[i] / 32768.0;
                     }
 
-                    const buffer = audioCtx.createBuffer(1, float32Array.length, 24000); 
+                    const buffer = audioCtx.createBuffer(1, float32Array.length, 24000);
                     buffer.getChannelData(0).set(float32Array);
 
                     const source = audioCtx.createBufferSource();
                     source.buffer = buffer;
                     source.connect(audioCtx.destination);
 
-                    
+
                     if (isFirstPlay) {
                         nextStartTimeRef.current = audioCtx.currentTime + 0.3;
                         isFirstPlay = false;
@@ -350,7 +360,7 @@ const ChatConversation = () => {
 
                     if (!hasStartedTyping) {
                         hasStartedTyping = true;
-                        setBotStatus("replying"); 
+                        setBotStatus("replying");
                         startTyping(safeText);
                     }
                 }
@@ -373,25 +383,25 @@ const ChatConversation = () => {
 
     const checkAudioEnd = () => {
         if (audioCheckIntervalRef.current) clearInterval(audioCheckIntervalRef.current);
-        
+
         audioCheckIntervalRef.current = setInterval(() => {
             const ctx = audioContextRef.current;
             if (!ctx || isStoppedRef.current) {
-                if(audioCheckIntervalRef.current) clearInterval(audioCheckIntervalRef.current);
+                if (audioCheckIntervalRef.current) clearInterval(audioCheckIntervalRef.current);
                 return;
             }
             if (ctx.currentTime >= nextStartTimeRef.current + 0.1) {
                 setBotStatus("idle");
-                if(audioCheckIntervalRef.current) clearInterval(audioCheckIntervalRef.current);
+                if (audioCheckIntervalRef.current) clearInterval(audioCheckIntervalRef.current);
                 stopAudioStream();
             }
-        }, 150); 
+        }, 150);
     };
 
     const startTyping = (fullText) => {
-        let index = 0;
-        setDisplayedText("");
         if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+        let index = 1;
+        setDisplayedText(fullText.charAt(0));
 
         typingIntervalRef.current = setInterval(() => {
             if (isStoppedRef.current) {
@@ -399,12 +409,12 @@ const ChatConversation = () => {
                 return;
             }
             if (index < fullText.length) {
-                setDisplayedText((prev) => prev + fullText.charAt(index));
+                setDisplayedText(fullText.slice(0, index + 1));
                 index++;
             } else {
                 completeTyping(fullText);
             }
-        }, 30); 
+        }, 30);
     };
 
     const completeTyping = (fullText) => {
@@ -468,7 +478,7 @@ const ChatConversation = () => {
             if (isStoppedRef.current) { setBotStatus("idle"); return; }
 
             const aiReply = getSmartResponse(response.data);
-            
+
             playAndSync(aiReply);
 
         } catch (error) {
