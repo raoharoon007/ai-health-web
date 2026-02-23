@@ -49,15 +49,16 @@ const SettingForm = () => {
     const fileInputRef = useRef(null);
     const [loading, setLoading] = useState(true);
     const [apiError, setApiError] = useState("");
-    
+
     const [isSaving, setIsSaving] = useState(false);
+
+    const [displayName, setDisplayName] = useState("");
 
     const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm({
         resolver: yupResolver(schema),
         mode: "onChange"
     });
 
-    const currentName = watch("fullName");
     const currentEmail = watch("email");
 
     const loadData = async () => {
@@ -70,6 +71,7 @@ const SettingForm = () => {
             const user = userRes.data?.data;
             if (user) {
                 setValue("fullName", user.full_name || "");
+                setDisplayName(user.full_name || "");
                 setValue("email", user.email || "");
                 setValue("age", user.age || "");
                 setValue("weight", user.weight || "");
@@ -145,7 +147,7 @@ const SettingForm = () => {
 
     const onSaveProfile = async (data) => {
         setApiError("");
-        setIsSaving(true); 
+        setIsSaving(true);
 
         try {
             let finalImageUri = profileImage || localProfileImage;
@@ -175,8 +177,9 @@ const SettingForm = () => {
                 disease: diseaseIds
             });
 
+            setDisplayName(data.fullName);
             updateProfileImage(finalImageUri);
-            
+
             setIsSaving(false);
             setShowOverlay1(true);
             setTimeout(() => setShowOverlay1(false), 2000);
@@ -243,7 +246,7 @@ const SettingForm = () => {
                             </div>
                             <div className='flex flex-col ml-4'>
                                 <span className='text-sm xs:text-lg font-normal text-primarytext w-full '>
-                                    {currentName || "User"}
+                                    {displayName || "User"}
                                 </span>
                                 <span className=' text-xs xs:text-sm font-normal text-secondarytext w-full  '>
                                     {currentEmail || "email@example.com"}
@@ -265,17 +268,17 @@ const SettingForm = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Age</label>
-                                    <input {...register("age")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.age ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
+                                    <input {...register("age")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.age ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
                                     {errors.age && <span className="text-warning text-xs ml-1">{errors.age.message}</span>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Weight (kg)</label>
-                                    <input {...register("weight")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.weight ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
+                                    <input {...register("weight")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.weight ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
                                     {errors.weight && <span className="text-warning text-xs ml-1">{errors.weight.message}</span>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-normal text-primarytext mb-1 ml-1">Height (cm)</label>
-                                    <input {...register("height")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.height ? "border-warning" : "border-bordercolor focus:border-primary"}`}/>
+                                    <input {...register("height")} type="number" className={`w-full rounded-xl border px-4 py-3 text-sm outline-none ${errors.height ? "border-warning" : "border-bordercolor focus:border-primary"}`} />
                                     {errors.height && <span className="text-warning text-xs ml-1">{errors.height.message}</span>}
                                 </div>
                                 <div>
@@ -285,11 +288,11 @@ const SettingForm = () => {
                                         control={control}
                                         render={({ field }) => (
                                             <Select {...field} options={genderOptions}
-                                            className={`w-full ${errors.gender ? "tw-select-error" : ""}`}
-                                             classNamePrefix="tw-select" components={{
-                                                DropdownIndicator: () => <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-primarytext pointer-events-none" />,
-                                                IndicatorSeparator: () => null,
-                                            }} />
+                                                className={`w-full ${errors.gender ? "tw-select-error" : ""}`}
+                                                classNamePrefix="tw-select" components={{
+                                                    DropdownIndicator: () => <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-primarytext pointer-events-none" />,
+                                                    IndicatorSeparator: () => null,
+                                                }} />
                                         )}
                                     />
                                     {errors.gender && <span className="text-warning text-xs ml-1 font-medium">{errors.gender.message}</span>}
@@ -348,8 +351,8 @@ const SettingForm = () => {
                         </div>
 
                         <div className='flex justify-center md:justify-end mt-auto'>
-                            <button 
-                                onClick={handleSubmit(onSaveProfile)} 
+                            <button
+                                onClick={handleSubmit(onSaveProfile)}
                                 disabled={isSaving}
                                 className='w-full sm:w-61 bg-primary hover:bg-hoverbtn disabled:opacity-70 disabled:cursor-not-allowed rounded-full py-3 text-white font-semibold shadow-lg transition active:scale-95 cursor-pointer'>
                                 {isSaving ? "Saving..." : "Save Changes"}

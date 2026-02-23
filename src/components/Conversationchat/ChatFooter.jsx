@@ -1,13 +1,13 @@
-import ChatInput from "../Chat/ChatInput"; 
+import ChatInput from "../Chat/ChatInput";
 
-const ChatFooter = ({ 
-    onRecordingChange, 
-    onTranscribingStatus, 
-    onSend, 
-    onStop, 
-    botStatus, 
-    isTranscribing, 
-    apiError 
+const ChatFooter = ({
+    onRecordingChange,
+    onTranscribingStatus,
+    onSend,
+    onStop,
+    botStatus,
+    isTranscribing,
+    apiError
 }) => {
     return (
         <div className="flex-none bg-white px-1 sm:px-5">
@@ -24,7 +24,7 @@ const ChatFooter = ({
                 </div>
                 {apiError && <div className="mt-2 text-warning text-xs text-center italic font-medium">{apiError}</div>}
                 <div className="flex justify-center py-2">
-                    <span className="text-center text-mutedtext font-light text-[10px] sm:text-sm">
+                    <span className="text-center text-mutedtext font-light text-[10px] 3xl:text-xl sm:text-sm">
                         AI can make mistakes. Consider checking important information.
                     </span>
                 </div>
