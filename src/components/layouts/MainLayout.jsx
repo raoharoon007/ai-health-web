@@ -31,6 +31,7 @@ const MainLayout = () => {
       if (!Array.isArray(newData) || newData.length === 0) {
         setHasMore(false);
         setIsFetchingMore(false);
+        setLoading(false); 
         return;
       }
 
@@ -103,7 +104,13 @@ const MainLayout = () => {
             loading={isFetchingMore} 
         />
         <main className="flex-1 flex justify-center overflow-y-auto">
-          <Outlet context={{ chats, setChats }} />
+          {loading ? (
+            <div className="flex items-center justify-center">
+              <span>Loading chats...</span>
+            </div>
+          ) : (
+            <Outlet context={{ chats, setChats }} />
+          )}
         </main>
       </div>
     </div>
