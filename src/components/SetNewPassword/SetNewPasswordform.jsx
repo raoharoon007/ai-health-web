@@ -22,7 +22,15 @@ const schema = yup.object({
             /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/,
             "Password must contain at least 1 uppercase, 1 lowercase, 1 number, and 1 special character"
         )
-        .notOneOf([yup.ref('current_password')], "New password cannot be the same as current password"),
+        .test(
+            "not-same-as-current",
+            "New password cannot be the same as current password",
+            function (value) {
+                const { current_password } = this.parent;
+                if (!current_password) return true;
+                return value !== current_password;
+            }
+        ),
     confirmPassword: yup
         .string()
         .required("Please confirm your password")
@@ -48,7 +56,8 @@ const SetNewPasswordform = ({ buttonText = "Reset Password" }) => {
     } = useForm({
         resolver: yupResolver(schema),
         context: { isSettings },
-        mode: "onChange"
+        mode: "onTouched",
+        reValidateMode: "onChange",
     });
 
     const onSubmit = async (data) => {
