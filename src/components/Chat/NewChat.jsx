@@ -157,7 +157,7 @@ const NewChat = () => {
     return (
         <div className={`relative flex flex-col w-full h-full bg-white sm:px-4 px-2 ${isChatActive
                 ? "overflow-hidden"
-                : "justify-start pt-5 3xl:pt-40 items-center overflow-x-hidden"
+                : "justify-start pt-5 3xl:pt-25 items-center overflow-x-hidden"
             }`}>
             <AuthOverlay isOpen={showOverlay} onClose={() => setShowOverlay(false)} />
 
@@ -186,7 +186,7 @@ const NewChat = () => {
                 </>
             ) : (
                 <div className="w-full max-w-5xl flex flex-col items-center z-10">
-                    <div className="3xl:h-80 3xl:w-80 2xl:h-60 2xl:w-60 lg:h-48 lg:w-48 h-32 w-32 mb-4 sm:mb-6 rounded-full bg-blue-500/10 flex justify-center items-center shrink-0">
+                    <div className="3xl:h-70 3xl:w-70 2xl:h-60 2xl:w-60 lg:h-48 lg:w-48 h-32 w-32 mb-4 sm:mb-6 rounded-full bg-blue-500/10 flex justify-center items-center shrink-0">
                         {botStatus === "replying" ? (
                             <video src={Botvideo} autoPlay loop muted className="h-full w-full object-contain rounded-full" />
                         ) : (
@@ -218,7 +218,7 @@ const NewChat = () => {
                         />
                         {apiError && <div className="mt-2 text-warning text-xs text-center italic font-medium">{apiError}</div>}
                         <div className="flex justify-center py-2">
-                            <span className="text-center text-mutedtext font-light text-[11px] 3xl:text-xl sm:text-sm px-4">
+                            <span className="text-center text-mutedtext font-light text-[11px] 3xl:text-[18px] sm:text-sm px-4">
                                 AI can make mistakes. Consider checking important information.
                             </span>
                         </div>

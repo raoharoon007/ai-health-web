@@ -136,7 +136,7 @@ const ChatInput = ({
         const selectedFiles = Array.from(e.target.files);
         if (files.length + selectedFiles.length > MAX_FILES) {
             setFileLimitError(true);
-            setTimeout(() => setFileLimitError(false), 2500);
+            setTimeout(() => setFileLimitError(false), 3500);
             return;
         }
         const mappedFiles = selectedFiles.map(file => ({
@@ -174,6 +174,17 @@ const ChatInput = ({
     return (
         <div className={`relative w-full max-w-5xl flex justify-center mx-auto py-2 sm:py-4 gap-1.5 sm:gap-4 items-end bg-transparent transition-opacity ${disabled ? "opacity-70" : "opacity-100"}`}>
 
+            {fileLimitError && (
+                <div className="fixed top-5 sm:top-10 left-0 right-0 flex justify-center px-4 z-9999 pointer-events-none animate-bounce-short">
+                    <div className="bg-warning text-white px-4 sm:px-6 py-3 rounded-xl sm:rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] border border-white/20 flex items-center gap-2 sm:gap-3 max-w-fit pointer-events-auto">
+                        <span className="text-base sm:text-xl">⚠️</span>
+                        <span className="text-xs sm:text-base font-bold sm:font-semibold tracking-wide whitespace-normal sm:whitespace-nowrap text-center">
+                            Maximum 3 files are allowed at a time.
+                        </span>
+                    </div>
+                </div>
+            )}
+
             <FileAttachIcon
                 className={`transition-all w-8 h-8 sm:w-14 sm:h-14 ${isFileDisabled ? "cursor-not-allowed grayscale opacity-50" : "cursor-pointer"}`}
                 onClick={() => !isFileDisabled && fileInputRef.current?.click()}
@@ -187,12 +198,6 @@ const ChatInput = ({
                 disabled={isFileDisabled}
                 accept="image/*,video/*,.pdf,.doc,.docx"
             />
-
-            {fileLimitError && (
-                <div className="absolute -top-12 left-0 bg-warning text-white text-[10px] sm:text-xs px-3 py-2 rounded-lg shadow-lg z-50">
-                    You can upload up to 3 files only
-                </div>
-            )}
 
             <div className={`relative flex flex-col flex-1 bg-white border-2 overflow-hidden transition-all duration-300 
                  ${disabled ? "bg-gray-50 border-gray-200" : "border-bordercolor focus-within:border-primary"}
@@ -258,17 +263,20 @@ const ChatInput = ({
                                 }}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Describe your Symptoms"
-                                className="w-full bg-transparent py-2 sm:py-3 text-sm sm:text-base font-medium placeholder:font-normal text-primarytext focus:outline-none resize-none max-h-40 sm:max-h-50 overflow-y-auto custom-scrollbar"
+                                className="w-full bg-transparent py-2 sm:py-3 pr-8 sm:pr-10 text-sm sm:text-base font-medium placeholder:font-normal text-primarytext focus:outline-none resize-none max-h-40 sm:max-h-50 overflow-y-auto custom-scrollbar"
                                 style={{ minHeight: '36px' }}
                                 maxLength={1000}
                                 data-gramm="false"
                                 data-enable-grammarly="false"
                             />
+
                             {message.length >= 900 && (
-                                <span className={`absolute bottom-1 right-1 text-[10px] sm:text-xs font-medium pointer-events-none ${message.length >= 1000 ? 'text-warning' : 'text-orange-400'
-                                    }`}>
-                                    {message.length}/1000
-                                </span>
+                                <div className="absolute bottom-1 right-0 flex items-center">
+                                    <span className={`text-[10px] sm:text-base font-bold px-1.5 py-0.5 rounded-md bg-white/80 ${message.length >= 1000 ? 'text-warning scale-110' : 'text-orange-500'
+                                        } transition-all duration-200`}>
+                                        {message.length} <span className="text-gray-400 font-normal">/ 1000</span>
+                                    </span>
+                                </div>
                             )}
                         </div>
                     )}
